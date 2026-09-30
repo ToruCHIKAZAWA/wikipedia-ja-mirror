@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "wikipedia-ja-mirror",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-01",
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "wikipedia-ja",
+      "database_id": "722791cc-f8e7-4893-bbef-cbb31925da19"
+    }
+  ],
+
+  "r2_buckets": [
+    {
+      "binding": "HTML_BUCKET",
+      "bucket_name": "wikipedia-ja-html"
+    }
+  ],
+
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
+}
