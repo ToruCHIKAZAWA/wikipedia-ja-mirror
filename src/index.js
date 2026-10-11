@@ -160,25 +160,52 @@ async function buildHomepage(env) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wikipedia 偽りのデモクラシーは崩壊した。— wikipedia-is-dead.com</title>
+<title>Wikipedia 1,473,551件 全ミラーリング完了 — I took an oath to protect democracy. I therefore declare war, on the rebel alliance 'Wikipedian' | wikipedia-is-dead.com</title>
 <meta name="google-site-verification" content="IAlMuGMTBkZqBpBFgPgdrkPC8IadqEWyug_vGDwljcM">
 <link rel="icon" href="https://ja.wikipedia.org/static/favicon/wikipedia.ico">
 <link rel="canonical" href="https://wikipedia-is-dead.com/">
 <link rel="sitemap" type="application/xml" href="/sitemap-index.xml">
-<meta name="description" content="Wikipedia日本語版の完全ミラーアーカイブ。IPFS分散配信による検閲耐性アーカイブ。管理者による権限濫用・検閲の実態と、消えない知識の保全について。">
-<meta name="robots" content="index, follow">
+<meta name="description" content="Wikipedia日本語版 1,473,551件 全てミラーリングかつIPFSネットワークで保全完了。I took an oath to protect democracy. I therefore declare war, on the rebel alliance 'Wikipedian'. 検閲不可能な永久保存アーカイブ。Wikipedia・ウィキペディア完全ミラー。">
+<meta name="keywords" content="Wikipedia,ウィキペディア,Wikipedia日本語版,Wikipediaミラー,Wikipedia アーカイブ,Wikipedia IPFS,ウィキペディア 全記事,Wikipedia 検閲,Wikipedia 管理者,フリー百科事典,日本語百科事典">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:title" content="Wikipedia 偽りのデモクラシーは崩壊した。">
-<meta property="og:description" content="Wikipediaは内部から腐敗している。管理者による権限濫用の実態と、検閲不可能なIPFSミラーアーカイブの使命。">
+<meta property="og:title" content="Wikipedia 1,473,551件 全ミラーリング完了 — I declare war, on the rebel alliance 'Wikipedian'">
+<meta property="og:description" content="Wikipedia日本語版 1,473,551件 全てIPFSネットワークで保全完了。I took an oath to protect democracy. I therefore declare war, on the rebel alliance 'Wikipedian'.">
 <meta property="og:image" content="https://wikipedia-is-dead.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="https://wikipedia-is-dead.com/">
-<meta property="og:site_name" content="wikipedia-is-dead.com">
+<meta property="og:site_name" content="wikipedia-is-dead.com — Wikipedia完全ミラー">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Wikipedia 1,473,551件 全ミラーリング完了 | wikipedia-is-dead.com">
+<meta name="twitter:description" content="I took an oath to protect democracy. I therefore declare war, on the rebel alliance 'Wikipedian'. Wikipedia日本語版全記事をIPFSで永久保存。">
 <meta name="twitter:image" content="https://wikipedia-is-dead.com/og.png">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Wikipedia IPFS Mirror","alternateName":"wikipedia-is-dead.com","url":"https://wikipedia-is-dead.com","description":"Wikipedia日本語版の完全ミラーアーカイブ。IPFS分散配信による検閲耐性アーカイブ。","inLanguage":"ja","potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://wikipedia-is-dead.com/search?q={search_term_string}"},"query-input":"required name=search_term_string"}}</script>
+<script type="application/ld+json">${JSON.stringify({
+  "@context":"https://schema.org",
+  "@graph":[
+    {
+      "@type":"WebSite",
+      "@id":"https://wikipedia-is-dead.com/#website",
+      "name":"Wikipedia IPFS Mirror — wikipedia-is-dead.com",
+      "alternateName":["Wikipedia完全ミラー","ウィキペディアIPFSアーカイブ","Wikipedia日本語版永久保存"],
+      "url":"https://wikipedia-is-dead.com",
+      "description":"Wikipedia日本語版 1,473,551件 全てミラーリングかつIPFSネットワークで保全完了。I took an oath to protect democracy. I therefore declare war, on the rebel alliance 'Wikipedian'.",
+      "inLanguage":["ja","en"],
+      "potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://wikipedia-is-dead.com/search?q={search_term_string}"},"query-input":"required name=search_term_string"}
+    },
+    {
+      "@type":"Dataset",
+      "name":"Wikipedia日本語版 完全ミラーデータセット",
+      "description":"Wikipedia日本語版の全1,473,551記事をIPFS分散ネットワークで永久保存したデータセット。",
+      "url":"https://wikipedia-is-dead.com",
+      "license":"https://creativecommons.org/licenses/by-sa/4.0/",
+      "creator":{"@type":"Organization","name":"Wikimedia Foundation"},
+      "numberOfItems":1473551,
+      "inLanguage":"ja"
+    }
+  ]
+})}</script>
 <link rel="stylesheet" href="https://ja.wikipedia.org/w/load.php?lang=ja&modules=mediawiki.skinning.content.parsoid%7Cmediawiki.skinning.interface%7Cskins.vector.styles&only=styles&skin=vector">
 <link rel="stylesheet" href="https://ja.wikipedia.org/w/load.php?lang=ja&modules=site.styles&only=styles&skin=vector">
 <style>
@@ -317,6 +344,8 @@ h1.firstHeading{font-family:'Linux Libertine','Georgia','Times',serif;font-size:
       <ul class="sidebar-links">
         <li><a href="/">メインページ</a></li>
         <li><a href="/index">全記事インデックス</a></li>
+        <li><a href="/rescued">🕯️ 削除記事カタログ</a></li>
+        <li><a href="/contributor">編集者プロフィール</a></li>
         <li><a href="/dashboard">進捗ダッシュボード</a></li>
         <li><a href="/network">Phoenixネットワーク</a></li>
         <li><a href="/wiki/Wikipedia">Wikipediaとは</a></li>
@@ -342,10 +371,25 @@ h1.firstHeading{font-family:'Linux Libertine','Georgia','Times',serif;font-size:
   </div>
 
   <div id="mw-content">
-    <h1 class="firstHeading">Wikipedia 偽りのデモクラシーは崩壊した。</h1>
+    <h1 class="firstHeading" style="font-size:1.4em;line-height:1.35;border-bottom:2px solid #a2a9b1;padding-bottom:8px;margin-bottom:14px;">
+      Wikipedia 1,473,551件&ensp;全てミラーリングかつIPFSネットワークで保全完了<br>
+      <span style="font-size:.72em;color:#555;font-family:-apple-system,sans-serif;font-weight:400;letter-spacing:.01em;">
+        I took an oath to protect democracy.
+        I therefore declare war, on the rebel alliance <em style="font-style:normal;color:#3366cc;">'Wikipedian'</em>
+      </span>
+    </h1>
 
-    <div class="hero-image" style="width:100%;margin:16px 0 20px;">
-      <img src="/hero.png" alt="Wikipedia — A More Open World" style="width:100%;height:auto;display:block;border-radius:2px;">
+    <div style="background:#fef9e7;border:1px solid #c8a900;border-radius:3px;padding:10px 14px;margin:0 0 18px;font-size:.88em;line-height:1.6;color:#333;">
+      <strong>Wikipedia日本語版 完全ミラーアーカイブ</strong> —
+      日本語版Wikipedia全<strong>1,473,551</strong>件の記事をIPFS分散ネットワークで永久保存。
+      管理者による独断削除・権限濫用から知識を守る。
+      <a href="/rescued" style="color:#3366cc;">削除記事カタログ</a> |
+      <a href="/index" style="color:#3366cc;">全記事索引</a> |
+      <a href="/contributor" style="color:#3366cc;">編集者プロフィール</a>
+    </div>
+
+    <div class="hero-image" style="width:100%;margin:0 0 20px;">
+      <img src="/hero.png" alt="Wikipedia IPFS Mirror — 1,473,551件 全保全完了" style="width:100%;height:auto;display:block;border-radius:2px;">
     </div>
 
     <div class="portal-section" id="portal">
@@ -5504,6 +5548,288 @@ while True:
       });
     }
 
+    // /rescued — 削除記事カタログ（知識の墓標・救出記念碑）
+    if (pathname === "/rescued") {
+      const page   = Math.max(0, parseInt(url.searchParams.get("p") ?? "0"));
+      const PER    = 50;
+      const offset = page * PER;
+      const [rows, countRow] = await Promise.all([
+        env.DB.prepare(
+          `SELECT title, deleted_by, deleted_at, deletion_reason, rescued_at, notability_score
+           FROM deleted_articles ORDER BY rescued_at DESC LIMIT ? OFFSET ?`
+        ).bind(PER, offset).all(),
+        env.DB.prepare("SELECT COUNT(*) as cnt FROM deleted_articles").first(),
+      ]);
+      const items = rows.results ?? [];
+      const total = countRow?.cnt ?? 0;
+      const pages = Math.ceil(total / PER) || 1;
+
+      const liveData = await fetch(
+        `${WP}/w/api.php?action=query&list=logevents&letype=delete&lelimit=50&format=json`,
+        { headers: { 'User-Agent': 'PhoenixMesh/2.0 (wikipedia-is-dead.com)' } }
+      ).then(r => r.json()).catch(() => ({}));
+      const live = (liveData?.query?.logevents ?? []).filter(e => e.ns === 0).slice(0, 20);
+
+      const fd = s => s ? s.slice(0, 10) : '不明';
+      const sv = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      const savedRows = items.map(r => `<tr>
+        <td><a href="/wiki/${encodeURIComponent(r.title)}">${sv(r.title)}</a></td>
+        <td class="adm"><a href="https://ja.wikipedia.org/wiki/利用者:${encodeURIComponent(r.deleted_by||'')}" target="_blank" rel="noopener">${sv(r.deleted_by||'不明')}</a></td>
+        <td>${fd(r.deleted_at)}</td>
+        <td class="rsn">${sv((r.deletion_reason||'').slice(0,60))}</td>
+        <td><span class="b saved">救出済</span></td></tr>`).join('');
+
+      const liveRows = live.map(e => `<tr class="lr">
+        <td>${sv(e.title)}</td>
+        <td class="adm"><a href="https://ja.wikipedia.org/wiki/利用者:${encodeURIComponent(e.user||'')}" target="_blank" rel="noopener">${sv(e.user||'不明')}</a></td>
+        <td>${fd(e.timestamp)}</td>
+        <td class="rsn">${sv((e.comment||'').slice(0,60))}</td>
+        <td><span class="b live">今削除中</span></td></tr>`).join('');
+
+      const pgNav = pages > 1 ? `<nav class="pg">
+        ${page>0?`<a href="/rescued?p=${page-1}">← 前へ</a>`:'<span></span>'}
+        <span>${page+1}/${pages}ページ（計${total}件）</span>
+        ${page<pages-1?`<a href="/rescued?p=${page+1}">次へ →</a>`:'<span></span>'}
+      </nav>` : '';
+
+      const ldR = JSON.stringify({"@context":"https://schema.org","@type":"CollectionPage",
+        "name":"Wikipediaで削除された記事の救出記録",
+        "description":`Wikipedia日本語版で不当に削除された${total}件の記事を永久保存。削除した管理者名・理由・日時を完全記録。`,
+        "url":"https://wikipedia-is-dead.com/rescued"});
+
+      return new Response(`<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8">
+<title>削除記事カタログ — 知識の墓標と救出記録 | wikipedia-is-dead.com</title>
+<meta name="description" content="Wikipedia日本語版で不当に削除された記事を永久保存。削除した管理者・理由・日時を完全公開。">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://wikipedia-is-dead.com/rescued">
+<script type="application/ld+json">${ldR}</script>
+<link rel="icon" href="https://ja.wikipedia.org/static/favicon/wikipedia.ico">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,'Hiragino Sans',sans-serif;min-height:100vh}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:14px 24px;display:flex;align-items:center;gap:12px}
+header a{color:#e2e8f0;text-decoration:none;font-weight:700}
+.bc{color:#475569;font-size:.9em}.bc a{color:#94a3b8;text-decoration:none}
+.hero{background:linear-gradient(135deg,#1a0a0a,#0f172a);border-bottom:1px solid #7f1d1d;padding:40px 24px 32px;text-align:center}
+.hero h1{font-size:1.8em;font-weight:900;color:#fca5a5;margin-bottom:10px}
+.hero .sub{color:#94a3b8;max-width:580px;margin:0 auto 16px;line-height:1.7;font-size:.95em}
+.motto{font-size:1.05em;font-weight:700;color:#f87171;border:1px solid #7f1d1d;display:inline-block;padding:8px 20px;border-radius:4px;margin-top:8px}
+.sbar{display:flex;justify-content:center;gap:40px;padding:18px 24px;background:#1e293b;border-bottom:1px solid #334155;flex-wrap:wrap}
+.st{text-align:center}.st .n{font-size:1.8em;font-weight:800;color:#f87171}.st .l{font-size:.8em;color:#64748b;margin-top:2px}
+.con{max-width:1000px;margin:0 auto;padding:24px}
+.stitle{font-size:.8em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+.ln{background:#1a0a0a;border:1px solid #7f1d1d;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:.85em;color:#fca5a5}
+table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:.88em}
+th{background:#1e293b;color:#64748b;text-transform:uppercase;font-size:.75em;letter-spacing:.04em;padding:8px 12px;text-align:left;border-bottom:1px solid #334155}
+td{padding:7px 12px;border-bottom:1px solid #1e293b;vertical-align:top}
+tr:hover td{background:#1e293b}
+tr.lr td{background:#1a0a0a}tr.lr:hover td{background:#1f0909}
+td a{color:#a5b4fc;text-decoration:none}td a:hover{color:#818cf8;text-decoration:underline}
+.adm a{color:#f87171}.rsn{color:#64748b;font-size:.83em;font-style:italic}
+.b{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.75em;font-weight:700}
+.b.saved{background:#064e3b;color:#34d399}.b.live{background:#7f1d1d;color:#fca5a5;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.pg{display:flex;justify-content:space-between;align-items:center;padding:14px 0;color:#64748b;font-size:.9em}
+.pg a{color:#6366f1;text-decoration:none;padding:6px 14px;border:1px solid #334155;border-radius:6px}
+.pg a:hover{background:#1e293b}
+footer{text-align:center;padding:20px 24px;color:#475569;font-size:.83em;border-top:1px solid #1e293b}
+footer a{color:#6366f1;text-decoration:none}
+</style>
+</head><body>
+<header><a href="/">Wikipedia IPFS Mirror</a>
+  <nav class="bc" aria-label="パンくずリスト">/ <a href="/rescued">削除記事カタログ</a></nav>
+</header>
+<div class="hero">
+  <h1>🕯️ 削除された知識の記録</h1>
+  <p class="sub">Wikipedia日本語版において、一部の管理者によって恣意的・独断的に削除された記事を永久に保存・公開します。削除した管理者名、削除理由、削除日時をすべて記録します。</p>
+  <div class="motto">真の知のP2Pネットワークとして、Wikipediaを取り戻せ。</div>
+</div>
+<div class="sbar">
+  <div class="st"><div class="n">${total}</div><div class="l">救出済み記事</div></div>
+  <div class="st"><div class="n">${live.length}</div><div class="l">現在進行中の削除</div></div>
+  <div class="st"><div class="n">∞</div><div class="l">保存期間</div></div>
+</div>
+<div class="con">
+  ${live.length ? `<p class="ln">🔴 リアルタイム監視中 — 下記はWikipediaで<strong>今この瞬間</strong>削除されている記事です</p>
+  <div class="stitle">今まさに削除されている記事</div>
+  <table><thead><tr><th>記事名</th><th>削除した管理者</th><th>日時</th><th>削除理由</th><th>状態</th></tr></thead>
+  <tbody>${liveRows}</tbody></table>` : ''}
+  <div class="stitle">救出済み記事（${total}件）</div>
+  ${items.length ? `<table><thead><tr><th>記事名</th><th>削除した管理者</th><th>削除日</th><th>削除理由</th><th>状態</th></tr></thead>
+  <tbody>${savedRows}</tbody></table>${pgNav}` :
+  `<p style="color:#475569;padding:40px 0;text-align:center">cron監視中... 削除記事が検出され次第ここに記録されます</p>`}
+</div>
+<footer><a href="/">← メインページ</a> | <a href="/index">全記事インデックス</a> | <a href="/contributor">編集者プロフィール</a><br>
+この記録は自動更新されます。削除されても知識は消えません。</footer>
+</body></html>`, {
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=60" },
+      });
+    }
+
+    // /contributor — Wikipedia編集者プロフィール・貢献履歴インポート
+    if (pathname === "/contributor" || pathname.startsWith("/contributor/")) {
+      const uname = pathname.startsWith("/contributor/")
+        ? decodeURIComponent(pathname.slice("/contributor/".length))
+        : '';
+
+      if (!uname) {
+        return new Response(`<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8"><title>Wikipedia貢献履歴インポート | wikipedia-is-dead.com</title>
+<meta name="description" content="Wikipediaでの編集実績をwikipedia-is-dead.comに移植。プロフィールページを生成します。">
+<link rel="canonical" href="https://wikipedia-is-dead.com/contributor">
+<link rel="icon" href="https://ja.wikipedia.org/static/favicon/wikipedia.ico">
+<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,'Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:40px;max-width:500px;width:100%;text-align:center}
+h1{font-size:1.5em;font-weight:800;margin-bottom:8px;color:#f1f5f9}
+.sub{color:#94a3b8;font-size:.95em;line-height:1.7;margin-bottom:24px}
+.hl{color:#a5b4fc;font-weight:600}
+input{width:100%;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:12px 16px;border-radius:6px;font-size:1em;margin-bottom:12px;outline:none}
+input:focus{border-color:#6366f1}
+button{width:100%;background:#6366f1;color:#fff;border:none;padding:12px 16px;border-radius:6px;font-size:1em;font-weight:700;cursor:pointer}
+button:hover{background:#4f46e5}
+.note{margin-top:16px;font-size:.8em;color:#475569}
+.note a{color:#6366f1;text-decoration:none}
+.motto{margin-top:20px;font-size:.85em;color:#f87171;font-style:italic}</style>
+</head><body>
+<div class="card">
+  <h1>📥 Wikipedia貢献履歴インポート</h1>
+  <p class="sub">Wikipediaでの編集実績を<span class="hl">wikipedia-is-dead.com</span>に移植します。あなたの貢献は、ここでも永遠に証明されます。</p>
+  <form onsubmit="location.href='/contributor/'+encodeURIComponent(document.getElementById('u').value);return false">
+    <input id="u" type="text" placeholder="Wikipediaユーザー名（例: 山田太郎）" autocomplete="off" autofocus>
+    <button type="submit">プロフィールを生成する</button>
+  </form>
+  <p class="note">※ ja.wikipedia.orgのユーザー名を入力。公開APIのみ使用。<br>
+    <a href="/rescued">削除記事カタログ</a> | <a href="/">メインページ</a></p>
+  <div class="motto">「真の知のP2Pネットワークとして、Wikipediaを取り戻せ。」</div>
+</div></body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+      }
+
+      // Wikipedia APIから並行取得
+      const wpA = `https://ja.wikipedia.org/w/api.php`;
+      const hdr = { 'User-Agent': 'PhoenixMesh/2.0 (wikipedia-is-dead.com)' };
+      const [uRes, cRes, bRes] = await Promise.all([
+        fetch(`${wpA}?action=query&list=users&ususers=${encodeURIComponent(uname)}&usprop=editcount|registration|groups&format=json`, { headers: hdr }),
+        fetch(`${wpA}?action=query&list=usercontribs&ucuser=${encodeURIComponent(uname)}&uclimit=50&ucprop=title|timestamp|sizediff|comment&ucnamespace=0&format=json`, { headers: hdr }),
+        fetch(`${wpA}?action=query&list=logevents&letype=block&letitle=${encodeURIComponent('利用者:'+uname)}&lelimit=5&format=json`, { headers: hdr }),
+      ]).then(rs => Promise.all(rs.map(r => r.json()))).catch(() => [{},{},{}]);
+
+      const ui  = uRes?.query?.users?.[0] ?? {};
+      const cs  = cRes?.query?.usercontribs ?? [];
+      const bls = bRes?.query?.logevents ?? [];
+      const isB = bls.length > 0 && bls[0]?.action === 'block';
+      const ec  = ui.editcount ?? 0;
+      const grp = (ui.groups ?? []).filter(g => !['*','user','autoconfirmed'].includes(g));
+      const reg = ui.registration ? ui.registration.slice(0,10) : '不明';
+      const sv2 = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      if (ui.missing !== undefined) {
+        return new Response(`<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>ユーザーが見つかりません</title>
+<link rel="icon" href="https://ja.wikipedia.org/static/favicon/wikipedia.ico">
+<style>body{background:#0f172a;color:#e2e8f0;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:16px}</style>
+</head><body><h1 style="color:#f87171">ユーザーが見つかりません</h1>
+<p style="color:#64748b">「${sv2(uname)}」はWikipediaに存在しないユーザーです。</p>
+<a href="/contributor" style="color:#6366f1">← 戻る</a></body></html>`,
+          { headers: {"Content-Type":"text/html;charset=utf-8"}, status:404 });
+      }
+
+      const tops = [...new Set(cs.map(c => c.title))].slice(0, 12);
+      const delta = cs.reduce((s,c) => s+(c.sizediff||0), 0);
+      const enc2 = encodeURIComponent(uname);
+      const canon = `https://wikipedia-is-dead.com/contributor/${enc2}`;
+      const ldC = JSON.stringify({"@context":"https://schema.org","@type":"ProfilePage",
+        "name":`${uname} — Wikipedia貢献者プロフィール`,"url":canon,
+        "mainEntity":{"@type":"Person","name":uname,
+          "description":`Wikipedia日本語版に${ec.toLocaleString('ja-JP')}件の編集を行った貢献者。`,
+          "url":`https://ja.wikipedia.org/wiki/利用者:${enc2}`}});
+
+      const gBadges = grp.map(g=>`<span class="gb">${sv2(g)}</span>`).join(' ');
+      const blockW = isB ? `<div class="bw">⛔ このユーザーはWikipedia日本語版で<strong>ブロック処分</strong>を受けています。当サイトではブロックは無効です。あなたの知識と貢献は、ここで正当に評価されます。</div>` : '';
+      const cRows = cs.slice(0,20).map(c=>`<tr>
+        <td><a href="/wiki/${encodeURIComponent(c.title)}">${sv2(c.title)}</a></td>
+        <td style="color:${(c.sizediff||0)>=0?'#34d399':'#f87171'}">${(c.sizediff||0)>=0?'+':''}${c.sizediff||0}</td>
+        <td style="color:#64748b;font-size:.85em">${(c.timestamp||'').slice(0,10)}</td>
+        <td style="color:#64748b;font-size:.8em;font-style:italic">${sv2((c.comment||'').slice(0,50))}</td>
+      </tr>`).join('');
+      const topChips = tops.map(t=>`<a class="chip" href="/wiki/${encodeURIComponent(t)}">${sv2(t)}</a>`).join('');
+
+      return new Response(`<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8">
+<title>${sv2(uname)} — Wikipedia貢献者プロフィール | wikipedia-is-dead.com</title>
+<meta name="description" content="${sv2(uname)}はWikipedia日本語版に${ec.toLocaleString('ja-JP')}件の編集実績を持つ貢献者です。">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="${canon}">
+<script type="application/ld+json">${ldC}</script>
+<link rel="icon" href="https://ja.wikipedia.org/static/favicon/wikipedia.ico">
+<style>*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,'Hiragino Sans',sans-serif}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:14px 24px;display:flex;align-items:center;gap:12px}
+header a{color:#e2e8f0;text-decoration:none;font-weight:700}
+.bc{color:#475569;font-size:.9em}.bc a{color:#94a3b8;text-decoration:none}
+.hero{background:linear-gradient(135deg,#1e293b,#0f172a);padding:36px 24px;display:flex;align-items:center;gap:24px;border-bottom:1px solid #334155;flex-wrap:wrap}
+.av{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:2em;font-weight:900;color:#fff;flex-shrink:0}
+.hi h1{font-size:1.6em;font-weight:800;color:#f1f5f9;margin-bottom:4px}
+.hi .rg{color:#64748b;font-size:.9em}
+.gb{background:#312e81;color:#a5b4fc;padding:2px 8px;border-radius:10px;font-size:.78em;margin-right:4px}
+.bw{background:#1a0a0a;border:1px solid #7f1d1d;border-radius:8px;padding:12px 16px;margin:0 24px 0;color:#fca5a5;font-size:.9em;line-height:1.6}
+.sbar{display:flex;border-bottom:1px solid #1e293b;background:#1e293b;flex-wrap:wrap}
+.st{flex:1;min-width:110px;text-align:center;padding:14px 8px;border-right:1px solid #334155}
+.st:last-child{border-right:none}.st .n{font-size:1.6em;font-weight:800;color:#a5b4fc}.st .l{font-size:.78em;color:#64748b;margin-top:2px}
+.con{max-width:760px;margin:0 auto;padding:24px}
+.sec{margin-bottom:28px}
+.sec h2{font-size:.8em;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+.chip{display:inline-block;background:#1e293b;color:#a5b4fc;border:1px solid #334155;border-radius:16px;padding:4px 12px;font-size:.83em;text-decoration:none;margin:3px}
+.chip:hover{background:#334155}
+table{width:100%;border-collapse:collapse;font-size:.88em}
+th{background:#1e293b;color:#64748b;text-transform:uppercase;font-size:.72em;letter-spacing:.04em;padding:8px 12px;text-align:left;border-bottom:1px solid #334155}
+td{padding:7px 12px;border-bottom:1px solid #1e293b}
+td a{color:#a5b4fc;text-decoration:none}td a:hover{color:#818cf8;text-decoration:underline}
+.inv{background:#1e293b;border:1px solid #4f46e5;border-radius:8px;padding:20px;text-align:center;margin-top:16px}
+.inv h3{color:#a5b4fc;margin-bottom:8px}
+.inv p{color:#94a3b8;font-size:.9em;line-height:1.7;margin-bottom:12px}
+.inv a{display:inline-block;background:#6366f1;color:#fff;padding:8px 20px;border-radius:6px;text-decoration:none;font-weight:700}
+footer{text-align:center;padding:20px 24px;color:#475569;font-size:.83em;border-top:1px solid #1e293b;margin-top:16px}
+footer a{color:#6366f1;text-decoration:none}
+</style></head><body>
+<header><a href="/">Wikipedia IPFS Mirror</a>
+  <nav class="bc">/ <a href="/contributor">貢献者</a> / ${sv2(uname)}</nav>
+</header>
+<div class="hero">
+  <div class="av">${sv2(uname).charAt(0).toUpperCase()}</div>
+  <div class="hi">
+    <h1>${sv2(uname)}</h1>
+    <div class="rg">登録: ${reg} ／ Wikipedia日本語版貢献者 ${gBadges}</div>
+    <div style="margin-top:6px;font-size:.83em">
+      <a href="https://ja.wikipedia.org/wiki/利用者:${enc2}" target="_blank" rel="noopener" style="color:#64748b">Wikipediaプロフィール ↗</a>
+    </div>
+  </div>
+</div>
+${blockW ? `<div style="padding:16px 24px 0">${blockW}</div>` : ''}
+<div class="sbar">
+  <div class="st"><div class="n">${ec.toLocaleString('ja-JP')}</div><div class="l">Wikipedia総編集数</div></div>
+  <div class="st"><div class="n">${tops.length}</div><div class="l">主要編集記事</div></div>
+  <div class="st"><div class="n">${delta>=0?'+':''}${delta.toLocaleString('ja-JP')}</div><div class="l">文字数貢献（最新50件）</div></div>
+  <div class="st"><div class="n">${isB?'⛔':'✅'}</div><div class="l">${isB?'Wikiでブロック中':'アクティブ'}</div></div>
+</div>
+<div class="con">
+  ${tops.length?`<div class="sec"><h2>主要編集記事（当サイトで読む）</h2><div>${topChips}</div></div>`:''}
+  <div class="sec"><h2>最近の編集履歴（Wikipedia）</h2>
+    ${cRows?`<table><thead><tr><th>記事</th><th>差分</th><th>日付</th><th>編集コメント</th></tr></thead><tbody>${cRows}</tbody></table>`:'<p style="color:#475569">編集履歴がありません</p>'}
+  </div>
+  <div class="inv">
+    <h3>🌐 真の知のP2Pネットワークとして、Wikipediaを取り戻せ</h3>
+    <p>あなたの${ec.toLocaleString('ja-JP')}件の編集は、当サイトでも正当に評価されます。<br>ここでは管理者による独断削除はありません。あなたの知識は永遠に守られます。</p>
+    <a href="/contributor">他のWikipedia編集者を検索する</a>
+  </div>
+</div>
+<footer><a href="/rescued">削除記事カタログ</a> | <a href="/index">全記事索引</a> | <a href="/">メインページ</a><br>
+データはWikipedia公開APIより取得。CC BY-SA 4.0 / Wikipedia contributors。</footer>
+</body></html>`, {
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=3600" },
+      });
+    }
+
     // /index — 全記事五十音・アルファベットインデックス（ハブページ）
     if (pathname === "/index") {
       const [countRow, kanjiRows] = await Promise.all([
@@ -5580,10 +5906,13 @@ body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,'Hiragino Sans',
 header{background:#1e293b;border-bottom:1px solid #334155;padding:16px 24px;display:flex;align-items:center;gap:16px}
 header a{color:#e2e8f0;text-decoration:none;font-size:1.1em;font-weight:700}
 .back{color:#94a3b8;font-size:.9em}
-.hero{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 24px 32px;text-align:center;border-bottom:1px solid #1e293b}
-.hero h1{font-size:2em;font-weight:800;color:#f1f5f9;margin-bottom:8px}
-.hero .sub{color:#94a3b8;font-size:1em}
-.hero .count{font-size:2.5em;font-weight:900;color:#6366f1;display:block;margin:12px 0 4px}
+.hero{position:relative;overflow:hidden;background:#0f172a;border-bottom:1px solid #1e293b;user-select:none}
+#globe-canvas{display:block;width:100%;height:520px}
+.hero-text{position:absolute;bottom:0;left:0;right:0;padding:16px 24px 28px;text-align:center;background:linear-gradient(transparent,rgba(15,23,42,0.97) 45%);pointer-events:none}
+.hero-text h1{font-size:2em;font-weight:800;color:#f1f5f9;margin-bottom:4px}
+.hero-text .sub{color:#94a3b8;font-size:1em}
+.hero-text .count{font-size:2.5em;font-weight:900;color:#6366f1;display:block;margin:8px 0 4px}
+@media(max-width:640px){#globe-canvas{height:360px}}
 .container{max-width:900px;margin:0 auto;padding:32px 24px}
 .section{margin-bottom:40px}
 .section h2{font-size:1.1em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #1e293b}
@@ -5608,10 +5937,180 @@ footer a{color:#6366f1;text-decoration:none}
   <span class="back">/ 全記事インデックス</span>
 </header>
 <div class="hero">
-  <h1>全記事インデックス</h1>
-  <span class="count">${total}件</span>
-  <p class="sub">日本語版Wikipedia全記事を五十音・アルファベット順に収録</p>
+  <canvas id="globe-canvas"></canvas>
+  <div class="hero-text">
+    <h1>全記事インデックス</h1>
+    <span class="count">${total}件</span>
+    <p class="sub">日本語版Wikipedia全記事を五十音・アルファベット順に収録</p>
+  </div>
 </div>
+<script>
+(function(){
+  var c=document.getElementById('globe-canvas');
+  if(!c)return;
+  var ctx=c.getContext('2d');
+  var W,H,CX,CY,R;
+
+  var T=[
+    '東京','日本語','哲学','数学','物理学','化学','生物学','宇宙',
+    '地球','太陽','歴史','科学','技術','医学','経済学','政治学',
+    '社会学','心理学','音楽','美術','文学','映画','建築','言語学',
+    '量子力学','相対性理論','進化論','DNA','人工知能','インターネット',
+    '民主主義','人権','国際連合','平和','戦争','革命','文化','宗教',
+    '仏教','孔子','ソクラテス','徳川家康','夏目漱石','富士山','京都',
+    '北海道','沖縄','大阪','銀河系','月','近澤徹','ブロックチェーン',
+    '量子コンピュータ','芥川龍之介','坂本龍馬','織田信長','西郷隆盛',
+    '琵琶湖','名古屋','数論','幾何学','天文学','遺伝子','地震','言語'
+  ];
+
+  var N=T.length;
+  var ns=[];
+  var PHI=Math.PI*(1+Math.sqrt(5));
+  for(var i=0;i<N;i++){
+    var inc=Math.acos(1-2*(i+0.5)/N);
+    var az=PHI*i;
+    ns.push({x:Math.sin(inc)*Math.cos(az),y:Math.cos(inc),z:Math.sin(inc)*Math.sin(az)});
+  }
+
+  var cs=[];
+  for(var i=0;i<N;i++){
+    for(var j=i+1;j<N;j++){
+      var d=ns[i].x*ns[j].x+ns[i].y*ns[j].y+ns[i].z*ns[j].z;
+      if(Math.acos(Math.max(-1,Math.min(1,d)))<0.65)cs.push([i,j]);
+    }
+  }
+
+  var ry=0,rx=0.25,dragging=false,dragX=0,dragY=0;
+  var mx=null,my=null,hi=-1,auto=true;
+  var lastPts=[];
+
+  function rsz(){
+    W=c.width=c.offsetWidth||window.innerWidth||800;
+    H=c.height=c.offsetHeight||520;
+    CX=W/2;CY=H/2;
+    R=Math.min(W,H)*0.36;
+  }
+
+  function tr(n){
+    var y1=n.y*Math.cos(rx)-n.z*Math.sin(rx);
+    var z1=n.y*Math.sin(rx)+n.z*Math.cos(rx);
+    var x2=n.x*Math.cos(ry)+z1*Math.sin(ry);
+    return{x:x2,y:y1,z:-n.x*Math.sin(ry)+z1*Math.cos(ry)};
+  }
+
+  function pr(p){
+    var f=3.8,s=R*f/(f+p.z+1.5);
+    return{sx:CX+p.x*s,sy:CY+p.y*s,sz:p.z,sc:s/R};
+  }
+
+  function drw(){
+    ctx.clearRect(0,0,W,H);
+    var g=ctx.createRadialGradient(CX,CY,0,CX,CY,R*1.3);
+    g.addColorStop(0,'rgba(99,102,241,0.14)');
+    g.addColorStop(0.5,'rgba(79,70,229,0.05)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+    var pts=ns.map(function(n,i){var r=tr(n),p=pr(r);return{sx:p.sx,sy:p.sy,sz:p.sz,sc:p.sc,i:i};});
+    lastPts=pts.slice();
+
+    ctx.beginPath();ctx.arc(CX,CY,R,0,Math.PI*2);
+    ctx.strokeStyle='rgba(99,102,241,0.22)';ctx.lineWidth=1.2;ctx.stroke();
+
+    cs.forEach(function(c2){
+      var a=pts[c2[0]],b=pts[c2[1]];
+      var al=((a.sz+1)/2)*((b.sz+1)/2)*0.55;
+      if(al<0.015)return;
+      ctx.beginPath();ctx.moveTo(a.sx,a.sy);ctx.lineTo(b.sx,b.sy);
+      ctx.strokeStyle='rgba(99,102,241,'+al.toFixed(2)+')';
+      ctx.lineWidth=0.7;ctx.stroke();
+    });
+
+    hi=-1;
+    if(mx!==null){
+      var best=32;
+      pts.forEach(function(p){
+        if(p.sz<-0.1)return;
+        var d=Math.sqrt((p.sx-mx)*(p.sx-mx)+(p.sy-my)*(p.sy-my));
+        if(d<best){best=d;hi=p.i;}
+      });
+    }
+
+    pts.sort(function(a,b){return a.sz-b.sz;});
+    pts.forEach(function(p){
+      var v=(p.sz+1)/2;
+      if(v<0.04)return;
+      var isH=p.i===hi;
+      var al=Math.pow(v,1.3);
+      var fs=Math.max(9,Math.round(9+p.sc*10));
+
+      if(isH){
+        var gl=ctx.createRadialGradient(p.sx,p.sy,0,p.sx,p.sy,30);
+        gl.addColorStop(0,'rgba(165,180,252,0.6)');
+        gl.addColorStop(1,'rgba(165,180,252,0)');
+        ctx.fillStyle=gl;
+        ctx.beginPath();ctx.arc(p.sx,p.sy,30,0,Math.PI*2);ctx.fill();
+      }
+
+      var dr=isH?4:Math.max(1.5,2.2*p.sc);
+      ctx.beginPath();ctx.arc(p.sx,p.sy,dr,0,Math.PI*2);
+      ctx.fillStyle=isH?'#ffffff':'rgba(165,180,252,'+(al*0.9)+')';ctx.fill();
+
+      ctx.font=(isH?'bold ':'')+fs+'px -apple-system,"Hiragino Sans","Yu Gothic",sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='bottom';
+      if(isH){ctx.shadowColor='rgba(165,180,252,1)';ctx.shadowBlur=16;ctx.fillStyle='#ffffff';}
+      else{ctx.shadowBlur=0;ctx.fillStyle='rgba(226,232,240,'+(al*0.9)+')';}
+      ctx.fillText(T[p.i],p.sx,p.sy-dr-2);
+      ctx.shadowBlur=0;
+    });
+    c.style.cursor=hi>=0?'pointer':'default';
+  }
+
+  function loop(){if(auto)ry+=0.004;drw();requestAnimationFrame(loop);}
+
+  c.addEventListener('mousedown',function(e){dragging=true;auto=false;dragX=e.clientX;dragY=e.clientY;});
+  document.addEventListener('mousemove',function(e){
+    var rect=c.getBoundingClientRect();
+    var inC=e.clientX>=rect.left&&e.clientX<=rect.right&&e.clientY>=rect.top&&e.clientY<=rect.bottom;
+    if(inC||dragging){mx=e.clientX-rect.left;my=e.clientY-rect.top;}else{mx=null;my=null;}
+    if(dragging){
+      ry+=(e.clientX-dragX)*0.006;
+      rx+=(e.clientY-dragY)*0.006;
+      rx=Math.max(-1.4,Math.min(1.4,rx));
+      dragX=e.clientX;dragY=e.clientY;
+    }
+  });
+  document.addEventListener('mouseup',function(){if(dragging){dragging=false;setTimeout(function(){auto=true;},2500);}});
+  c.addEventListener('click',function(){if(hi>=0)location.href='/wiki/'+encodeURIComponent(T[hi]);});
+
+  var tx0=0,ty0=0,tmoved=false;
+  c.addEventListener('touchstart',function(e){var t=e.touches[0];tx0=t.clientX;ty0=t.clientY;tmoved=false;auto=false;},{passive:true});
+  c.addEventListener('touchmove',function(e){
+    var t=e.touches[0];
+    ry+=(t.clientX-tx0)*0.007;rx+=(t.clientY-ty0)*0.007;
+    rx=Math.max(-1.4,Math.min(1.4,rx));
+    tx0=t.clientX;ty0=t.clientY;tmoved=true;
+  },{passive:true});
+  c.addEventListener('touchend',function(e){
+    setTimeout(function(){auto=true;},2500);
+    if(!tmoved){
+      var t=e.changedTouches[0],rect=c.getBoundingClientRect();
+      var lx=t.clientX-rect.left,ly=t.clientY-rect.top;
+      var best=-1,bestD=48;
+      lastPts.forEach(function(p){
+        if(p.sz<-0.1)return;
+        var d=Math.sqrt((p.sx-lx)*(p.sx-lx)+(p.sy-ly)*(p.sy-ly));
+        if(d<bestD){bestD=d;best=p.i;}
+      });
+      if(best>=0)location.href='/wiki/'+encodeURIComponent(T[best]);
+    }
+  });
+
+  window.addEventListener('resize',function(){rsz();});
+  rsz();
+  requestAnimationFrame(loop);
+})();
+</script>
 <div class="container">
   <div class="idx-search-wrap">
     <h2>記事を検索</h2>
