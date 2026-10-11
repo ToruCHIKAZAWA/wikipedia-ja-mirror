@@ -2,3 +2,8 @@ node_modules/
 .wrangler/
 .dev.vars
 *.local
+*.bin
+.DS_Store
+__ec-keyshare-*.bin
+__graph-queue.json
+dist/
