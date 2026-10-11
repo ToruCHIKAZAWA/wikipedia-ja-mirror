@@ -316,6 +316,7 @@ h1.firstHeading{font-family:'Linux Libertine','Georgia','Times',serif;font-size:
       <div class="sidebar-heading">ナビゲーション</div>
       <ul class="sidebar-links">
         <li><a href="/">メインページ</a></li>
+        <li><a href="/index">全記事インデックス</a></li>
         <li><a href="/dashboard">進捗ダッシュボード</a></li>
         <li><a href="/network">Phoenixネットワーク</a></li>
         <li><a href="/wiki/Wikipedia">Wikipediaとは</a></li>
@@ -2299,6 +2300,12 @@ function buildP2POverlay(title, cid, quality = null, porCount = 0) {
       padding:4px 12px;cursor:pointer;font-size:12px;font-weight:600;">
       ⌬ 守護者になる
     </button>
+    <a href="/wiki/${encodeURIComponent(title)}/history"
+      title="本家Wikipediaから追従した変更履歴"
+      style="font-size:11px;color:#64748b;text-decoration:none;padding:3px 8px;
+      border:1px solid #1e293b;border-radius:6px;white-space:nowrap;">
+      📋 変更履歴
+    </a>
     <button onclick="document.getElementById('ipfs-bar').style.display='none'"
       style="background:transparent;color:#475569;border:none;cursor:pointer;font-size:18px;">×</button>
   </div>
@@ -2735,6 +2742,9 @@ function prepareHTML(html) {
     .replace('</head>', OG_TAGS + '\n</head>')
     // Wikipedia由来のrobots noindexを除去（本サイトではすべてインデックス対象）
     .replace(/<meta[^>]+name=["']robots["'][^>]*>/gi, '')
+    // ja.wikipedia.org の /wiki/ 記事リンクを本サイト内リンクに変換（内部PageRankを維持）
+    .replace(/href="https?:\/\/ja\.wikipedia\.org\/wiki\/([^"#?]{1,300})([^"]*)"/g,
+      (_, t, rest) => `href="/wiki/${t}${rest}"`)
     // /w/, /static/, /api/, /skins/, /extensions/, /resources/ パスをWikipedia絶対URLに
     .replace(
       /((?:href|src|action)=["'])(\/(?:w|static|skins|extensions|resources|api)\/)/g,
@@ -2756,11 +2766,12 @@ function extractDescription(html, title) {
 }
 
 // ─── 記事ページ SEO インジェクション ─────────────────────────────────────────
-function injectArticleSEO(html, title, uploadedAt) {
+function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
   const canonicalUrl = `https://wikipedia-is-dead.com/wiki/${encodeURIComponent(title)}`;
   const wpUrl = `https://ja.wikipedia.org/wiki/${encodeURIComponent(title)}`;
   const desc = extractDescription(html, title);
   const dateStr = uploadedAt || new Date().toISOString();
+  const dateModified = wikiLastModified || dateStr;
   const safeTitle = title.replace(/"/g, '&quot;');
   const safeDesc = desc.replace(/"/g, '&quot;');
   let r = html;
@@ -2832,7 +2843,7 @@ function injectArticleSEO(html, title, uploadedAt) {
         "url": canonicalUrl,
         "inLanguage": "ja",
         "datePublished": dateStr,
-        "dateModified": dateStr,
+        "dateModified": dateModified,
         "author": {
           "@type": "Organization",
           "name": "Wikipedia contributors",
@@ -2919,11 +2930,163 @@ function buildReplicationManifest(title, cid, quality, porCount) {
   });
 }
 
+// ─── Wikipedia Vector 2022 スキンで記事を包む ─────────────────────────────────
+function wrapWithVectorSkin(html, title) {
+  const safe = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const enc  = encodeURIComponent(title);
+  const st   = safe(title);
+
+  // Parsoid <head> と <body> を抽出
+  const headContent = (html.match(/<head[^>]*>([\s\S]*?)<\/head>/i) || ['',''])[1];
+  const bodyContent = (html.match(/<body[^>]*>([\s\S]*?)<\/body>/i) || ['',''])[1] || html;
+
+  return `<!DOCTYPE html>
+<html lang="ja" dir="ltr">
+<head>
+<meta charset="utf-8">
+${headContent}
+<style>
+/* ─ Vector 2022 skin reconstruction ─────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+body.skin-vector-2022{margin:0;padding:0;background:#fff;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;font-size:14px;color:#202122}
+/* Header */
+.mw-header{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #a2a9b1;height:50px;display:flex;align-items:center}
+.mw-header-container{display:flex;align-items:center;width:100%;padding:0 20px;gap:12px}
+.vector-header-start{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.mw-logo{display:flex;align-items:center;gap:6px;text-decoration:none;color:inherit}
+.mw-logo-icon{width:34px;height:34px;object-fit:contain}
+.mw-logo-wordmark{height:16px;width:auto}
+.vector-search-box{flex:1;max-width:360px}
+.vector-search-form{display:flex;border:1px solid #a2a9b1;border-radius:2px;overflow:hidden;background:#fff}
+.vector-search-input{flex:1;border:none;outline:none;padding:6px 10px;font-size:13px;color:#202122;min-width:0}
+.vector-search-btn{background:#fff;border:none;border-left:1px solid #a2a9b1;padding:0 10px;cursor:pointer;color:#54595d;font-size:13px;white-space:nowrap}
+.vector-search-btn:hover{background:#f8f9fa}
+.vector-user-links{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;white-space:nowrap}
+.vector-user-links a{color:#3366cc;text-decoration:none}
+.vector-user-links a:hover{text-decoration:underline}
+/* Page container */
+.mw-page-container{display:flex;min-height:calc(100vh - 50px)}
+/* Sidebar */
+#vector-main-menu{width:160px;flex-shrink:0;background:#fff;border-right:1px solid #eaecf0;padding:0;overflow-y:auto;font-size:13px}
+#p-logo{padding:14px 12px 10px;border-bottom:1px solid #eaecf0;margin-bottom:4px;display:flex;justify-content:center}
+.mw-wiki-logo{display:block;width:50px;height:50px;background:url(https://ja.wikipedia.org/static/images/icons/wikipedia.png) no-repeat center/contain}
+.vector-menu-heading{padding:6px 12px 2px;font-size:11px;font-weight:bold;color:#54595d;text-transform:uppercase;letter-spacing:.03em;background:none;border:none;cursor:default;display:block;margin-top:8px}
+.vector-menu-content-list{list-style:none;margin:0;padding:0}
+.vector-menu-content-list li a{display:block;padding:4px 12px;color:#3366cc;text-decoration:none;line-height:1.5}
+.vector-menu-content-list li a:hover{background:#eaecf0}
+/* Main content */
+#content.mw-body{flex:1;padding:20px 30px 40px;min-width:0;background:#fff}
+h1#firstHeading{font-family:'Linux Libertine','Georgia','Times',serif;font-size:1.95em;font-weight:normal;border-bottom:1px solid #a2a9b1;padding:0 0 5px;margin:0 0 10px;line-height:1.3;color:#000;display:block}
+#siteSub{font-size:12px;color:#54595d;margin-bottom:10px;display:block}
+#contentSub{margin-bottom:5px}
+/* Tabs bar */
+.mw-tabs{display:flex;gap:0;border-bottom:1px solid #a2a9b1;margin:-20px -30px 16px;padding:0 20px;background:#fff}
+.mw-tabs a,.mw-tabs span{display:inline-block;padding:8px 14px;font-size:13px;color:#3366cc;text-decoration:none;border:1px solid transparent;border-bottom:none;margin-bottom:-1px;line-height:1.4}
+.mw-tabs .mw-tab-active{border-color:#a2a9b1;border-bottom-color:#fff;background:#fff;color:#202122;cursor:default}
+.mw-tabs a:hover{background:#f8f9fa}
+/* Footer */
+#footer{background:#f8f9fa;border-top:1px solid #a2a9b1;padding:16px 200px 16px 180px;font-size:12px;color:#54595d;clear:both}
+#footer ul{list-style:none;padding:0;margin:0 0 6px;display:flex;flex-wrap:wrap;gap:4px 20px}
+#footer ul li a{color:#3366cc;text-decoration:none}
+#footer ul li a:hover{text-decoration:underline}
+@media(max-width:800px){
+  #vector-main-menu{display:none}
+  #content.mw-body{padding:12px 14px 30px}
+  h1#firstHeading{font-size:1.5em}
+  #footer{padding:12px 16px}
+}
+</style>
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject skin-vector-2022 skin-vector action-view">
+<div id="mw-page-base" class="noprint"></div>
+
+<header id="mw-header" class="mw-header noprint">
+  <div class="mw-header-container">
+    <div class="vector-header-start">
+      <a class="mw-logo" href="/wiki/メインページ" title="メインページに移動する">
+        <img class="mw-logo-icon" src="https://ja.wikipedia.org/static/images/icons/wikipedia.png" alt="Wikipedia" width="34" height="34">
+        <img class="mw-logo-wordmark" src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Wikipedia-logo-v2-wordmark.svg/200px-Wikipedia-logo-v2-wordmark.svg.png" alt="Wikipedia" height="16">
+      </a>
+    </div>
+    <div class="vector-search-box">
+      <form class="vector-search-form" action="/search" method="get" role="search" accept-charset="utf-8">
+        <input class="vector-search-input" type="search" name="q" placeholder="Wikipediaを検索" id="searchInput" autocomplete="off" accesskey="f" title="この百科事典を検索 [f]">
+        <button class="vector-search-btn" type="submit" title="検索">検索</button>
+      </form>
+    </div>
+    <nav class="vector-user-links noprint" aria-label="個人用ツール">
+      <a href="https://ja.wikipedia.org/wiki/${enc}" target="_blank" rel="noopener">本家Wiki ↗</a>
+    </nav>
+  </div>
+</header>
+
+<div class="mw-page-container">
+
+  <nav id="vector-main-menu" role="navigation" aria-label="サイト">
+    <div id="p-logo" role="banner">
+      <a class="mw-wiki-logo" href="/wiki/メインページ" title="メインページに移動する"></a>
+    </div>
+    <div id="p-navigation" class="vector-menu mw-portlet">
+      <h3 class="vector-menu-heading">ナビゲーション</h3>
+      <div class="vector-menu-content"><ul class="vector-menu-content-list">
+        <li class="mw-list-item"><a href="/wiki/メインページ" title="メインページに移動する">メインページ</a></li>
+        <li class="mw-list-item"><a href="/index">全記事索引</a></li>
+        <li class="mw-list-item"><a href="/api/random" title="ランダムに選ばれた記事に移動する">おまかせ表示</a></li>
+        <li class="mw-list-item"><a href="/wiki/Wikipedia">ウィキペディアについて</a></li>
+        <li class="mw-list-item"><a href="/wiki/Wikipedia:コミュニティ・ポータル">コミュニティ・ポータル</a></li>
+      </ul></div>
+    </div>
+    <div id="p-tb" class="vector-menu mw-portlet">
+      <h3 class="vector-menu-heading">ツール</h3>
+      <div class="vector-menu-content"><ul class="vector-menu-content-list">
+        <li class="mw-list-item"><a href="/wiki/${enc}/history">変更履歴</a></li>
+        <li class="mw-list-item"><a href="https://ja.wikipedia.org/wiki/特別:リンク元/${enc}" target="_blank" rel="noopener">リンク元</a></li>
+        <li class="mw-list-item"><a href="https://ja.wikipedia.org/wiki/${enc}" target="_blank" rel="noopener">本家Wikipediaで読む</a></li>
+      </ul></div>
+    </div>
+  </nav>
+
+  <main id="content" class="mw-body" role="main">
+    <div class="mw-tabs noprint">
+      <span class="mw-tab-active">読む</span>
+      <a href="https://ja.wikipedia.org/w/index.php?title=${enc}&action=edit" target="_blank" rel="noopener">編集</a>
+      <a href="/wiki/${enc}/history">履歴表示</a>
+    </div>
+    <div id="siteNotice" class="mw-body-content noprint"></div>
+    <div class="mw-indicators mw-body-content noprint"></div>
+    <h1 id="firstHeading" class="firstHeading mw-first-heading" lang="ja">${st}</h1>
+    <div id="bodyContent" class="vector-body mw-body-content">
+      <div id="siteSub" class="noprint">ウィキペディアから、無料の百科事典</div>
+      <div id="contentSub" class="mw-content-subtitle"></div>
+      <div id="mw-content-text" class="mw-body-content">
+${bodyContent}
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<footer id="footer" class="mw-footer noprint" role="contentinfo">
+  <ul id="footer-info">
+    <li>この記事は <a href="https://ja.wikipedia.org/wiki/${enc}" target="_blank" rel="noopener">Wikipedia日本語版「${st}」</a> を原典とし、<a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ja" rel="license">CC BY-SA 4.0</a> のもとで配信しています。著作者: Wikipedia contributors。</li>
+    <li><a href="/wiki/${enc}/history">変更履歴を表示</a></li>
+  </ul>
+  <ul id="footer-places">
+    <li><a href="https://foundation.wikimedia.org/wiki/Special:MyLanguage/Policy:Privacy_policy">プライバシー・ポリシー</a></li>
+    <li><a href="https://ja.wikipedia.org/wiki/Wikipedia:ウィキペディアについて">ウィキペディアについて</a></li>
+    <li><a href="https://ja.wikipedia.org/wiki/Wikipedia:免責事項">免責事項</a></li>
+    <li><a href="https://wikipedia-is-dead.com">wikipedia-is-dead.com</a></li>
+  </ul>
+</footer>
+</body></html>`;
+}
+
 // ─── 記事HTMLにP2Pオーバーレイを注入 ──────────────────────────────────────
-function injectP2P(html, title, cid, porCount = 0, uploadedAt = null) {
+function injectP2P(html, title, cid, porCount = 0, uploadedAt = null, wikiLastModified = null) {
   const quality  = computeQualityScore(html);
   const prepared = prepareHTML(html);
-  const seoHtml  = injectArticleSEO(prepared, title, uploadedAt);
+  const seoMeta  = injectArticleSEO(prepared, title, uploadedAt, wikiLastModified);
+  const skinHtml = wrapWithVectorSkin(seoMeta, title);
   const overlay  = buildP2POverlay(title, cid, quality, porCount);
 
   // System III: 自己複製マニフェスト + ゲノムメタタグをHEADに埋め込む
@@ -2938,9 +3101,9 @@ function injectP2P(html, title, cid, porCount = 0, uploadedAt = null) {
     cid ? `<link rel="alternate" type="application/x-ipfs" href="ipfs://${cid}" title="IPFS">` : '',
     `<script type="application/x-phoenix-manifest">${manifest}</script>`,
   ].filter(Boolean).join('\n');
-  const withManifest = seoHtml.includes('</head>')
-    ? seoHtml.replace('</head>', genomeTags + '\n</head>')
-    : seoHtml;
+  const withManifest = skinHtml.includes('</head>')
+    ? skinHtml.replace('</head>', genomeTags + '\n</head>')
+    : skinHtml;
 
   if (withManifest.includes("</body>")) {
     return withManifest.replace("</body>", overlay + "\n</body>");
@@ -3539,6 +3702,132 @@ function scoreNotability(html, title) {
   };
 }
 
+// ─── Wikipedia Recent Changes 追従 ───────────────────────────────────────────
+// 本家Wikipediaの変更をリアルタイムで検出し、R2/D1を更新 + diffを記録する
+async function syncRecentChanges(env) {
+  // 同期状態の読み込み（最終同期タイムスタンプ + APIcontinueトークン）
+  const stateObj = await env.HTML_BUCKET.get('__sync_state.json').catch(() => null);
+  const state    = stateObj ? JSON.parse(await stateObj.text()) : {};
+  const now      = new Date().toISOString();
+
+  // Wikipedia Recent Changes API
+  const params = new URLSearchParams({
+    action: 'query', list: 'recentchanges',
+    rcprop: 'title|timestamp|sizes|comment|user|revid|old_revid|logaction',
+    rclimit: '500', rctype: 'edit|new', rcnamespace: '0',
+    format: 'json', formatversion: '2',
+  });
+  if (state.rc_continue) {
+    params.set('rccontinue', state.rc_continue);
+  } else {
+    const since = state.last_sync ?? new Date(Date.now() - 60_000).toISOString();
+    params.set('rcstart', since);
+    params.set('rcdir', 'newer');
+  }
+
+  const rcResp = await fetch(`https://ja.wikipedia.org/w/api.php?${params}`, {
+    headers: { 'User-Agent': 'PhoenixMesh/2.0 (wikipedia-is-dead.com; mirror)' }
+  });
+  if (!rcResp.ok) return { synced: 0, error: rcResp.status };
+  const rcData = await rcResp.json();
+
+  const changes      = rcData.query?.recentchanges ?? [];
+  const nextContinue = rcData.continue?.rccontinue ?? null;
+  if (changes.length === 0) {
+    await env.HTML_BUCKET.put('__sync_state.json',
+      JSON.stringify({ ...state, last_sync: now, rc_continue: null, last_run: now }));
+    return { synced: 0 };
+  }
+
+  // 1回のcronで最大15記事（タイムアウト回避）
+  const toProcess = changes.slice(0, 15);
+  let synced = 0;
+
+  for (const change of toProcess) {
+    try {
+      const title    = change.title;
+      const revid    = change.revid    ?? 0;
+      const oldRevid = change.old_revid ?? 0;
+
+      // Parsoid REST APIで最新HTMLを取得
+      const htmlResp = await fetch(
+        `https://ja.wikipedia.org/api/rest_v1/page/html/${encodeURIComponent(title)}`,
+        { headers: { 'User-Agent': 'PhoenixMesh/2.0', Accept: 'text/html' } }
+      );
+      if (!htmlResp.ok) continue;
+      const newHtml = await htmlResp.text();
+      if (newHtml.length < 500) continue;
+
+      // 旧HTMLのサイズ取得（diff用）
+      const oldObj  = await env.HTML_BUCKET.head(title).catch(() => null);
+      const oldSize = oldObj?.size ?? 0;
+
+      // R2を最新HTMLで上書き
+      await env.HTML_BUCKET.put(title, newHtml, {
+        httpMetadata: { contentType: 'text/html; charset=utf-8' },
+        customMetadata: { revid: String(revid), synced_at: now },
+      });
+
+      // diff metadataをR2に保存（__diffs/{title}/{revid}.json）
+      const diffPayload = {
+        title, revid, old_revid: oldRevid,
+        editor:   change.user    ?? '',
+        comment:  change.comment ?? '',
+        old_size: oldSize,
+        new_size: newHtml.length,
+        size_delta: newHtml.length - oldSize,
+        diff_url: `https://ja.wikipedia.org/w/index.php?title=${encodeURIComponent(title)}&diff=${revid}&oldid=${oldRevid}`,
+        wiki_timestamp: change.timestamp,
+        synced_at: now,
+      };
+      await env.HTML_BUCKET.put(
+        `__diffs/${encodeURIComponent(title)}/${revid}.json`,
+        JSON.stringify(diffPayload),
+        { httpMetadata: { contentType: 'application/json' } }
+      );
+
+      // D1: articles更新 + article_diffs記録
+      await env.DB.batch([
+        env.DB.prepare(`
+          INSERT INTO articles (title, cid, uploaded_at, revid, wiki_last_modified)
+          VALUES (?, '', ?, ?, ?)
+          ON CONFLICT(title) DO UPDATE SET
+            uploaded_at=excluded.uploaded_at,
+            revid=excluded.revid,
+            wiki_last_modified=excluded.wiki_last_modified
+        `).bind(title, now, revid, change.timestamp),
+        env.DB.prepare(`
+          INSERT OR IGNORE INTO article_diffs
+            (title, revid, old_revid, editor, comment, old_size, new_size, synced_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(title, revid, oldRevid, change.user ?? '', change.comment ?? '',
+                oldSize, newHtml.length, now),
+      ]);
+
+      synced++;
+    } catch (_) { /* 個別失敗はスキップ */ }
+  }
+
+  // 更新記事をIndexNow + Google Indexing APIに即時通知
+  const syncedTitles = toProcess.slice(0, synced).map(c => c.title);
+  if (syncedTitles.length) {
+    await submitToIndexNow(env, syncedTitles).catch(() => {});
+    await submitToGoogleIndexingAPI(env, syncedTitles).catch(() => {});
+  }
+
+  // 同期状態を更新（未処理の続きがあればrc_continueを保持）
+  const lastTimestamp = changes[changes.length - 1]?.timestamp ?? now;
+  await env.HTML_BUCKET.put('__sync_state.json', JSON.stringify({
+    last_sync:    nextContinue ? state.last_sync : lastTimestamp,
+    rc_continue:  nextContinue,
+    last_run:     now,
+    last_synced:  synced,
+    last_total:   changes.length,
+  }));
+
+  return { synced, total: changes.length, continue: !!nextContinue };
+}
+
 // ─── Wikipedia削除ログ監視 + 削除記事の緊急アーカイブ ───────────────────────
 async function watchDeletionLog(env) {
   // Wikipedia削除ログ（直近50件）を取得
@@ -3781,6 +4070,33 @@ async function submitToGoogleIndexingAPI(env, titles) {
       }).catch(() => {})
     ));
   } catch {}
+}
+
+// ─── IndexNow バルク送信（全記事を10,000件/cron で順次プッシュ）──────────────
+async function indexNowBulkBatch(env) {
+  if (!env.INDEXNOW_KEY) return;
+  const cursorObj = await env.HTML_BUCKET.get('__indexnow_cursor.json').catch(() => null);
+  const cursor    = cursorObj ? JSON.parse(await cursorObj.text()) : { offset: 0, done: false };
+  if (cursor.done) return;
+
+  const BATCH = 10000;
+  const rows = await env.DB.prepare(
+    "SELECT title FROM articles ORDER BY rowid LIMIT ? OFFSET ?"
+  ).bind(BATCH, cursor.offset).all();
+
+  const titles = (rows.results ?? []).map(r => r.title);
+  if (titles.length === 0) {
+    await env.HTML_BUCKET.put('__indexnow_cursor.json',
+      JSON.stringify({ offset: cursor.offset, done: true, finished_at: new Date().toISOString() }));
+    return;
+  }
+
+  await submitToIndexNow(env, titles);
+
+  const nextOffset = cursor.offset + titles.length;
+  const done       = titles.length < BATCH;
+  await env.HTML_BUCKET.put('__indexnow_cursor.json',
+    JSON.stringify({ offset: nextOffset, done, updated_at: new Date().toISOString() }));
 }
 
 // ─── サイトマップ ping（Google + Bing）──────────────────────────────────────
@@ -4404,10 +4720,11 @@ export default {
       // ① ミラーリング: 52秒間バッチを連続実行（cron1回あたり最大約8バッチ=200記事）
       const batchResult = runBatchLoop(env, 52000);
 
-      // ② Self-Healing + 削除監視 + 複製補充: ミラーリングと並列実行
+      // ② Self-Healing + 削除監視 + 複製補充 + RC追従: ミラーリングと並列実行
       const sideResult = (async () => {
-        await selfHeal(env).catch(() => {});       // UNPROCESSED → ANCHORED
-        await replicationHeal(env).catch(() => {}); // ENDANGERED → LOW（毎分）
+        await selfHeal(env).catch(() => {});           // UNPROCESSED → ANCHORED
+        await replicationHeal(env).catch(() => {});    // ENDANGERED → LOW（毎分）
+        await syncRecentChanges(env).catch(() => {});  // 本家Wikipedia変更追従（毎分）
         if (minute % 3 === 0) await watchDeletionLog(env).catch(() => {});
         if (minute % 5 === 0) await watchDeletionProposals(env).catch(() => {});
         if (minute % 10 === 0) {
@@ -4415,6 +4732,7 @@ export default {
             encodeManifestToShards(env).catch(() => {}),
             priorityPin(env).catch(() => {}),
             publishToNostr(env).catch(() => {}),
+            indexNowBulkBatch(env).catch(() => {}),  // 全記事IndexNow一括送信（10分ごと）
           ]);
         }
         if (env.NOSTR_SK) await nostrBackfill(env).catch(() => {});
@@ -4775,6 +5093,77 @@ done</code></pre>
       }
     }
 
+    // /api/diffs/{title} — 記事の変更履歴JSON
+    if (pathname.startsWith("/api/diffs/") && request.method === "GET") {
+      const title  = decodeURIComponent(pathname.slice("/api/diffs/".length));
+      const limit  = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);
+      const rows   = await env.DB.prepare(
+        "SELECT revid, old_revid, editor, comment, old_size, new_size, synced_at FROM article_diffs WHERE title=? ORDER BY synced_at DESC LIMIT ?"
+      ).bind(title, limit).all();
+      return json({ title, diffs: rows.results ?? [] });
+    }
+
+    // /wiki/{title}/history — 記事変更履歴ページ
+    if (pathname.startsWith("/wiki/") && pathname.endsWith("/history")) {
+      const rawTitle = decodeURIComponent(pathname.slice(6, -8));
+      const rows     = await env.DB.prepare(
+        "SELECT revid, old_revid, editor, comment, old_size, new_size, synced_at FROM article_diffs WHERE title=? ORDER BY id DESC LIMIT 100"
+      ).bind(rawTitle).all();
+      const diffs    = rows.results ?? [];
+      const rows2    = diffs.map(d => {
+        const delta    = (d.new_size - d.old_size);
+        const sign     = delta > 0 ? '+' : '';
+        const color    = delta > 0 ? '#2a9d2a' : delta < 0 ? '#c0392b' : '#888';
+        const diffLink = `https://ja.wikipedia.org/w/index.php?title=${encodeURIComponent(rawTitle)}&diff=${d.revid}&oldid=${d.old_revid}`;
+        return `<tr>
+          <td style="color:#888;white-space:nowrap">${d.synced_at?.slice(0,19).replace('T',' ')}</td>
+          <td><a href="/wiki/${encodeURIComponent(rawTitle)}">${rawTitle}</a></td>
+          <td style="color:#4a9eff"><a href="https://ja.wikipedia.org/wiki/Special:Contributions/${encodeURIComponent(d.editor??'')}" target="_blank">${d.editor??'不明'}</a></td>
+          <td style="color:${color};font-weight:bold">${sign}${delta.toLocaleString()}文字</td>
+          <td style="color:#bbb;max-width:400px;overflow:hidden">${(d.comment||'').slice(0,120)}</td>
+          <td><a href="${diffLink}" target="_blank" style="color:#4a9eff;font-size:12px">Wikipedia差分→</a></td>
+        </tr>`;
+      }).join('');
+      const html = `<!DOCTYPE html><html lang="ja"><head>
+        <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>${rawTitle} — 変更履歴 | Phoenix Mesh</title>
+        <style>
+          body{background:#0d1117;color:#e6edf3;font-family:sans-serif;margin:0;padding:20px}
+          h1{color:#4a9eff;font-size:1.4em}
+          a{color:#4a9eff}
+          table{width:100%;border-collapse:collapse;font-size:13px}
+          th{text-align:left;border-bottom:1px solid #30363d;padding:8px 12px;color:#8b949e}
+          td{padding:8px 12px;border-bottom:1px solid #21262d;vertical-align:top}
+          .back{display:inline-block;margin-bottom:16px;color:#4a9eff;text-decoration:none}
+          .badge{background:#1f3a5f;color:#4a9eff;border-radius:4px;padding:2px 8px;font-size:12px}
+        </style>
+      </head><body>
+        <a class="back" href="/wiki/${encodeURIComponent(rawTitle)}">← ${rawTitle} に戻る</a>
+        <h1>📋 変更履歴: ${rawTitle}</h1>
+        <p style="color:#8b949e">Phoenix Meshが本家Wikipediaから追従した変更の記録。
+        <span class="badge">${diffs.length}件</span></p>
+        ${diffs.length === 0
+          ? '<p style="color:#8b949e">まだ変更履歴がありません。毎分cronで本家と同期中です。</p>'
+          : `<table><thead><tr>
+              <th>日時 (UTC)</th><th>記事</th><th>編集者</th>
+              <th>変化量</th><th>編集コメント</th><th>差分</th>
+             </tr></thead><tbody>${rows2}</tbody></table>`}
+        <p style="color:#555;font-size:12px;margin-top:32px">
+          Phoenix Mesh — wikipedia-is-dead.com |
+          <a href="/wiki/${encodeURIComponent(rawTitle)}">記事を読む</a>
+        </p>
+      </body></html>`;
+      return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60' } });
+    }
+
+    // /api/sync/status — 同期状態の確認
+    if (pathname === "/api/sync/status") {
+      const stateObj = await env.HTML_BUCKET.get('__sync_state.json').catch(() => null);
+      const state    = stateObj ? JSON.parse(await stateObj.text()) : {};
+      const count    = await env.DB.prepare("SELECT COUNT(*) as n FROM article_diffs").first();
+      return json({ sync_state: state, total_diffs_recorded: count?.n ?? 0 });
+    }
+
     // /bootstrap — 普遍構成子: どこからでもPhoenix Meshノードを再生成できるスクリプト
     // Von Neumann的自己記述: このエンドポイント自体がネットワークの「遺伝子」
     if (pathname === "/bootstrap") {
@@ -5099,6 +5488,275 @@ while True:
       });
     }
 
+    // /index — 全記事五十音・アルファベットインデックス（ハブページ）
+    if (pathname === "/index") {
+      const countRow = await env.DB.prepare("SELECT COUNT(*) as cnt FROM articles").first();
+      const total    = (countRow?.cnt ?? 0).toLocaleString('ja-JP');
+      const kana = [
+        ['あ','い','う','え','お'],['か','き','く','け','こ'],['さ','し','す','せ','そ'],
+        ['た','ち','つ','て','と'],['な','に','ぬ','ね','の'],['は','ひ','ふ','へ','ほ'],
+        ['ま','み','む','め','も'],['や','ゆ','よ'],['ら','り','る','れ','ろ'],
+        ['わ','ゐ','ゑ','を','ん'],
+      ];
+      const rows = [
+        'あ行','か行','さ行','た行','な行','は行','ま行','や行','ら行','わ行',
+      ];
+      const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+      const nums  = '0123456789'.split('');
+      const kanaGrid = kana.map((row, i) =>
+        `<div class="idx-row"><span class="idx-row-label">${rows[i]}</span>` +
+        row.map(c => `<a class="idx-c" href="/index/${encodeURIComponent(c)}">${c}</a>`).join('') +
+        `</div>`
+      ).join('\n');
+      const alphaGrid = alpha.map(c =>
+        `<a class="idx-c" href="/index/${encodeURIComponent(c)}">${c}</a>`).join('');
+      const numGrid = nums.map(c =>
+        `<a class="idx-c" href="/index/${encodeURIComponent(c)}">${c}</a>`).join('');
+
+      const ld = JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "CollectionPage",
+            "@id": "https://wikipedia-is-dead.com/index#collection",
+            "name": "Wikipedia日本語版 全記事インデックス",
+            "description": `日本語版Wikipedia ${total}件の全記事を五十音・アルファベット順に掲載した完全インデックス。`,
+            "url": "https://wikipedia-is-dead.com/index",
+            "inLanguage": "ja",
+            "isPartOf": { "@type": "WebSite", "@id": "https://wikipedia-is-dead.com/#website" },
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Wikipedia Mirror", "item": "https://wikipedia-is-dead.com" },
+              { "@type": "ListItem", "position": 2, "name": "全記事インデックス", "item": "https://wikipedia-is-dead.com/index" },
+            ]
+          }
+        ]
+      });
+
+      const html = `<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8">
+<title>Wikipedia日本語版 全記事インデックス（${total}件）| wikipedia-is-dead.com</title>
+<meta name="description" content="日本語版Wikipedia ${total}件の全記事を五十音・アルファベット順に掲載した完全インデックス。検閲不可能な永久保存版。">
+<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+<link rel="canonical" href="https://wikipedia-is-dead.com/index">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://wikipedia-is-dead.com/index">
+<meta property="og:title" content="Wikipedia日本語版 全記事インデックス（${total}件）">
+<meta property="og:description" content="日本語版Wikipedia全記事の五十音・アルファベット索引。">
+<link rel="icon" href="https://ja.wikipedia.org/static/favicon/wikipedia.ico">
+<script type="application/ld+json">${ld}</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,'Hiragino Sans',sans-serif;min-height:100vh}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:16px 24px;display:flex;align-items:center;gap:16px}
+header a{color:#e2e8f0;text-decoration:none;font-size:1.1em;font-weight:700}
+.back{color:#94a3b8;font-size:.9em}
+.hero{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:48px 24px 32px;text-align:center;border-bottom:1px solid #1e293b}
+.hero h1{font-size:2em;font-weight:800;color:#f1f5f9;margin-bottom:8px}
+.hero .sub{color:#94a3b8;font-size:1em}
+.hero .count{font-size:2.5em;font-weight:900;color:#6366f1;display:block;margin:12px 0 4px}
+.container{max-width:900px;margin:0 auto;padding:32px 24px}
+.section{margin-bottom:40px}
+.section h2{font-size:1.1em;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #1e293b}
+.idx-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.idx-row-label{color:#475569;font-size:.8em;min-width:40px;text-align:right}
+.idx-c{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;background:#1e293b;color:#a5b4fc;border:1px solid #334155;border-radius:8px;text-decoration:none;font-size:1.1em;font-weight:600;transition:all .15s}
+.idx-c:hover{background:#6366f1;color:#fff;border-color:#6366f1;transform:scale(1.05)}
+.alpha-grid{display:flex;flex-wrap:wrap;gap:6px}
+.idx-search-wrap{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px 24px;margin-bottom:36px}
+.idx-search-wrap h2{font-size:1em;font-weight:700;color:#94a3b8;letter-spacing:.1em;margin-bottom:12px;text-transform:uppercase}
+.idx-search-row{display:flex;gap:8px}
+.idx-search-row input{flex:1;background:#0f172a;border:1px solid #334155;border-radius:6px;padding:10px 14px;font-size:1em;color:#e2e8f0;outline:none;min-width:0}
+.idx-search-row input:focus{border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.25)}
+.idx-search-row button{background:#6366f1;color:#fff;border:none;border-radius:6px;padding:10px 20px;font-size:1em;font-weight:600;cursor:pointer;white-space:nowrap}
+.idx-search-row button:hover{background:#4f46e5}
+footer{text-align:center;padding:32px 24px;color:#475569;font-size:.85em;border-top:1px solid #1e293b}
+footer a{color:#6366f1;text-decoration:none}
+</style>
+</head><body>
+<header>
+  <a href="/">Wikipedia IPFS Mirror</a>
+  <span class="back">/ 全記事インデックス</span>
+</header>
+<div class="hero">
+  <h1>全記事インデックス</h1>
+  <span class="count">${total}件</span>
+  <p class="sub">日本語版Wikipedia全記事を五十音・アルファベット順に収録</p>
+</div>
+<div class="container">
+  <div class="idx-search-wrap">
+    <h2>記事を検索</h2>
+    <div class="idx-search-row">
+      <input type="search" id="idx-search-input" placeholder="漢字・ひらがな・カタカナ・英語で検索…（例：近澤徹）" autocomplete="off">
+      <button id="idx-search-btn">検索</button>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var inp=document.getElementById('idx-search-input');
+    var btn=document.getElementById('idx-search-btn');
+    function go(){var q=inp.value.trim();if(q)location.href='/search?q='+encodeURIComponent(q);}
+    btn.addEventListener('click',go);
+    inp.addEventListener('keydown',function(e){if(e.key==='Enter')go();});
+  })();
+  </script>
+  <div class="section">
+    <h2>五十音順</h2>
+    ${kanaGrid}
+  </div>
+  <div class="section">
+    <h2>アルファベット順</h2>
+    <div class="alpha-grid">${alphaGrid}</div>
+  </div>
+  <div class="section">
+    <h2>数字</h2>
+    <div class="alpha-grid">${numGrid}</div>
+  </div>
+</div>
+<footer>
+  <a href="/">wikipedia-is-dead.com</a> — 日本語版Wikipedia ${total}件の永久保存アーカイブ。
+  CC BY-SA 4.0 / Wikipedia contributors。
+</footer>
+</body></html>`;
+      return new Response(html, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=3600",
+        },
+      });
+    }
+
+    // /index/{char} — 文字別記事一覧（五十音・アルファベット）
+    const indexCharM = pathname.match(/^\/index\/(.+)$/);
+    if (indexCharM) {
+      const char  = decodeURIComponent(indexCharM[1]).slice(0, 3);
+      const page  = Math.max(0, parseInt(url.searchParams.get("p") ?? "0"));
+      const PER   = 200;
+      const offset = page * PER;
+
+      const [rows, countRow] = await Promise.all([
+        env.DB.prepare(
+          "SELECT title FROM articles WHERE title LIKE ? ORDER BY title LIMIT ? OFFSET ?"
+        ).bind(char + '%', PER, offset).all(),
+        env.DB.prepare(
+          "SELECT COUNT(*) as cnt FROM articles WHERE title LIKE ?"
+        ).bind(char + '%').first(),
+      ]);
+
+      const titles = (rows.results ?? []).map(r => r.title);
+      const total  = countRow?.cnt ?? 0;
+      const pages  = Math.ceil(total / PER);
+      const totalFmt = total.toLocaleString('ja-JP');
+
+      const listItems = titles.map((t, i) =>
+        `<li><a href="/wiki/${encodeURIComponent(t)}">${t.replace(/</g,'&lt;')}</a></li>`
+      ).join('');
+
+      const pageNav = pages > 1 ? `<nav class="pg">
+        ${page > 0 ? `<a href="/index/${encodeURIComponent(char)}?p=${page-1}">← 前へ</a>` : '<span></span>'}
+        <span>${page+1} / ${pages}ページ</span>
+        ${page < pages-1 ? `<a href="/index/${encodeURIComponent(char)}?p=${page+1}">次へ →</a>` : '<span></span>'}
+      </nav>` : '';
+
+      const canonicalUrl = `https://wikipedia-is-dead.com/index/${encodeURIComponent(char)}`;
+      const ld2 = JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "CollectionPage",
+            "name": `「${char}」で始まるWikipedia記事一覧（${totalFmt}件）`,
+            "description": `Wikipedia日本語版のうち「${char}」で始まる記事${totalFmt}件の一覧。`,
+            "url": canonicalUrl,
+            "inLanguage": "ja",
+          },
+          {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Wikipedia Mirror", "item": "https://wikipedia-is-dead.com" },
+              { "@type": "ListItem", "position": 2, "name": "全記事インデックス", "item": "https://wikipedia-is-dead.com/index" },
+              { "@type": "ListItem", "position": 3, "name": `「${char}」`, "item": canonicalUrl },
+            ]
+          },
+          {
+            "@type": "ItemList",
+            "name": `「${char}」で始まるWikipedia記事`,
+            "numberOfItems": total,
+            "itemListElement": titles.slice(0, 10).map((t, i) => ({
+              "@type": "ListItem",
+              "position": offset + i + 1,
+              "url": `https://wikipedia-is-dead.com/wiki/${encodeURIComponent(t)}`,
+              "name": t,
+            })),
+          }
+        ]
+      });
+
+      const html2 = `<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8">
+<title>「${char}」で始まる記事一覧（${totalFmt}件）| wikipedia-is-dead.com</title>
+<meta name="description" content="Wikipedia日本語版のうち「${char}」で始まる記事${totalFmt}件の完全一覧。五十音・アルファベット順インデックス。">
+<meta name="robots" content="index, follow, max-snippet:-1">
+<link rel="canonical" href="${canonicalUrl}">
+${page > 0 ? `<link rel="prev" href="/index/${encodeURIComponent(char)}?p=${page-1}">` : ''}
+${page < pages-1 ? `<link rel="next" href="/index/${encodeURIComponent(char)}?p=${page+1}">` : ''}
+<meta property="og:type" content="website">
+<meta property="og:url" content="${canonicalUrl}">
+<meta property="og:title" content="「${char}」で始まるWikipedia記事一覧（${totalFmt}件）">
+<link rel="icon" href="https://ja.wikipedia.org/static/favicon/wikipedia.ico">
+<script type="application/ld+json">${ld2}</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f172a;color:#e2e8f0;font-family:-apple-system,'Hiragino Sans',sans-serif}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:14px 24px;display:flex;align-items:center;gap:12px}
+header a{color:#e2e8f0;text-decoration:none;font-weight:700}
+.bc{color:#475569;font-size:.9em}
+.bc a{color:#94a3b8;text-decoration:none}
+.hero{padding:28px 24px 20px;background:#1e293b;border-bottom:1px solid #334155}
+.hero h1{font-size:1.5em;font-weight:800;color:#f1f5f9}
+.hero .cnt{color:#94a3b8;font-size:.9em;margin-top:4px}
+.container{max-width:960px;margin:0 auto;padding:24px}
+ul.art-list{list-style:none;columns:3;column-gap:16px}
+@media(max-width:700px){ul.art-list{columns:2}}
+@media(max-width:420px){ul.art-list{columns:1}}
+ul.art-list li{break-inside:avoid;margin-bottom:4px}
+ul.art-list a{color:#a5b4fc;text-decoration:none;font-size:.95em;line-height:1.6}
+ul.art-list a:hover{color:#818cf8;text-decoration:underline}
+.pg{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-top:1px solid #1e293b;margin-top:24px;color:#94a3b8;font-size:.9em}
+.pg a{color:#6366f1;text-decoration:none;padding:8px 16px;border:1px solid #334155;border-radius:6px}
+.pg a:hover{background:#1e293b}
+footer{text-align:center;padding:24px;color:#475569;font-size:.85em;border-top:1px solid #1e293b}
+footer a{color:#6366f1;text-decoration:none}
+</style>
+</head><body>
+<header>
+  <a href="/">Wikipedia IPFS Mirror</a>
+  <nav class="bc" aria-label="パンくずリスト">
+    / <a href="/index">インデックス</a> / 「${char}」
+  </nav>
+</header>
+<div class="hero">
+  <h1>「${char}」で始まる記事</h1>
+  <p class="cnt">全${totalFmt}件 — ${page+1}/${pages}ページ</p>
+</div>
+<div class="container">
+  ${titles.length ? `<ul class="art-list">${listItems}</ul>` : '<p style="color:#64748b;padding:40px 0;text-align:center">該当する記事がありません</p>'}
+  ${pageNav}
+</div>
+<footer>
+  <a href="/index">← 全記事インデックスに戻る</a> |
+  <a href="/">wikipedia-is-dead.com</a> — CC BY-SA 4.0 / Wikipedia contributors
+</footer>
+</body></html>`;
+      return new Response(html2, {
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=1800",
+        },
+      });
+    }
+
     // /search — 検索結果ページ
     if (pathname === "/search") {
       const q = url.searchParams.get("q") || "";
@@ -5249,9 +5907,8 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
 
     // /sitemap-index.xml — ページ分割サイトマップのインデックス
     if (pathname === "/sitemap-index.xml") {
-      const cacheObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
-      const cache    = cacheObj ? JSON.parse(await cacheObj.text()) : null;
-      const total    = cache?.total_count ?? 0;
+      const countRow = await env.DB.prepare("SELECT COUNT(*) as cnt FROM articles").first();
+      const total    = countRow?.cnt ?? 0;
       const pageSize = 50000;
       const pages    = Math.max(1, Math.ceil(total / pageSize));
       const host     = "https://wikipedia-is-dead.com";
@@ -5261,7 +5918,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       ).join('\n');
       return new Response(
         `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemaps}\n</sitemapindex>`,
-        { headers: { "Content-Type": "application/xml", "Cache-Control": "public, max-age=3600" } }
+        { headers: { "Content-Type": "application/xml", "Cache-Control": "public, max-age=86400" } }
       );
     }
 
@@ -5271,12 +5928,13 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       const limit  = 50000;
       const offset = page * limit;
       const rows   = await env.DB.prepare(
-        "SELECT title, uploaded_at FROM articles ORDER BY uploaded_at DESC LIMIT ? OFFSET ?"
+        "SELECT title, COALESCE(wiki_last_modified, uploaded_at) AS lastmod FROM articles ORDER BY lastmod DESC LIMIT ? OFFSET ?"
       ).bind(limit, offset).all();
       const host = "https://wikipedia-is-dead.com";
-      const urls = (rows.results ?? []).map(({ title, uploaded_at }) =>
+      const urls = (rows.results ?? []).map(({ title, lastmod }) =>
         `<url><loc>${host}/wiki/${encodeURIComponent(title)}</loc>` +
-        (uploaded_at ? `<lastmod>${uploaded_at.slice(0, 10)}</lastmod>` : "") +
+        (lastmod ? `<lastmod>${lastmod.slice(0, 10)}</lastmod>` : "") +
+        `<changefreq>monthly</changefreq><priority>0.8</priority>` +
         `</url>`
       ).join("\n");
       // 次ページがあればサイトマップインデックスへのリンクを含める
@@ -5568,13 +6226,16 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
     if (r2obj) {
       const html = await r2obj.text();
       const cid = r2obj.customMetadata?.cid || "";
+      const wikiLastModified = r2obj.customMetadata?.synced_at || null;
       const uploadedAt = r2obj.uploaded ? r2obj.uploaded.toISOString() : null;
-      const lastMod = uploadedAt ? new Date(uploadedAt).toUTCString() : new Date().toUTCString();
-      const body = injectP2P(html, title, cid, 0, uploadedAt);
+      const lastMod = wikiLastModified
+        ? new Date(wikiLastModified).toUTCString()
+        : uploadedAt ? new Date(uploadedAt).toUTCString() : new Date().toUTCString();
+      const body = injectP2P(html, title, cid, 0, uploadedAt, wikiLastModified);
       return new Response(body, {
         headers: {
           "Content-Type": "text/html; charset=utf-8",
-          "Cache-Control": "public, max-age=3600",
+          "Cache-Control": "public, max-age=86400, stale-while-revalidate=3600",
           "X-IPFS-CID": cid,
           "Last-Modified": lastMod,
           "X-Robots-Tag": "index, follow",
@@ -5585,7 +6246,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
 
     // 2. R2ミス時のみD1にフォールバック
     const row = await env.DB.prepare(
-      "SELECT cid, html, por_count, uploaded_at FROM articles WHERE title=?"
+      "SELECT cid, html, por_count, uploaded_at, wiki_last_modified FROM articles WHERE title=?"
     ).bind(title).first();
 
     if (!row) {
@@ -5595,13 +6256,16 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       );
     }
 
-    const { cid, html: d1Html, por_count, uploaded_at } = row;
+    const { cid, html: d1Html, por_count, uploaded_at, wiki_last_modified } = row;
     const porCount = por_count || 0;
     const uploadedAt = uploaded_at || null;
-    const lastMod = uploadedAt ? new Date(uploadedAt).toUTCString() : new Date().toUTCString();
+    const wikiLastModified = wiki_last_modified || null;
+    const lastMod = wikiLastModified
+      ? new Date(wikiLastModified).toUTCString()
+      : uploadedAt ? new Date(uploadedAt).toUTCString() : new Date().toUTCString();
     const baseHeaders = {
       "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=86400, stale-while-revalidate=3600",
       "X-IPFS-CID": cid || "",
       "Last-Modified": lastMod,
       "X-Robots-Tag": "index, follow",
@@ -5609,7 +6273,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
 
     // 3. D1レガシーHTMLから配信
     if (d1Html) {
-      const body = injectP2P(d1Html, title, cid, porCount, uploadedAt);
+      const body = injectP2P(d1Html, title, cid, porCount, uploadedAt, wikiLastModified);
       return new Response(body, { headers: { ...baseHeaders, "X-Served-By": "d1-legacy" } });
     }
 
@@ -5618,7 +6282,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       const ipfsRes = await fetchFromIPFS(cid);
       if (ipfsRes) {
         const rawHtml = await ipfsRes.text();
-        const body = injectP2P(rawHtml, title, cid, porCount, uploadedAt);
+        const body = injectP2P(rawHtml, title, cid, porCount, uploadedAt, wikiLastModified);
         return new Response(body, { headers: { ...baseHeaders, "X-IPFS-CID": cid, "X-Served-By": "ipfs" } });
       }
     }
