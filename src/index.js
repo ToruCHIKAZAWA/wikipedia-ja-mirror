@@ -3878,11 +3878,27 @@ async function watchDeletionLog(env) {
       },
     });
 
-    // D1に記録（削除フラグ付き）
-    await env.DB.prepare(
-      `INSERT INTO articles (title, cid, uploaded_at) VALUES (?, '', datetime('now'))
-       ON CONFLICT(title) DO NOTHING`
-    ).bind(title).run().catch(() => {});
+    // D1に記録（削除フラグ付き + deleted_articlesテーブルに削除メタデータ）
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO articles (title, cid, uploaded_at) VALUES (?, '', datetime('now'))
+         ON CONFLICT(title) DO NOTHING`
+      ).bind(title),
+      env.DB.prepare(
+        `INSERT INTO deleted_articles (title, deleted_by, deleted_at, deletion_reason, rescued_from, notability_score)
+         VALUES (?, ?, ?, ?, 'wayback', ?)
+         ON CONFLICT(title) DO UPDATE SET
+           deleted_by=excluded.deleted_by,
+           deleted_at=excluded.deleted_at,
+           rescued_from='wayback'`
+      ).bind(
+        title,
+        event.user || 'unknown',
+        event.timestamp || new Date().toISOString(),
+        event.comment || '',
+        notability.score
+      ),
+    ]).catch(() => {});
 
     // IPFSピン固定
     if (env.PINATA_JWT) {
@@ -5490,8 +5506,19 @@ while True:
 
     // /index — 全記事五十音・アルファベットインデックス（ハブページ）
     if (pathname === "/index") {
-      const countRow = await env.DB.prepare("SELECT COUNT(*) as cnt FROM articles").first();
-      const total    = (countRow?.cnt ?? 0).toLocaleString('ja-JP');
+      const [countRow, kanjiRows] = await Promise.all([
+        env.DB.prepare("SELECT COUNT(*) as cnt FROM articles").first(),
+        env.DB.prepare(
+          "SELECT SUBSTR(title,1,1) as c, COUNT(*) as cnt FROM articles " +
+          "WHERE UNICODE(SUBSTR(title,1,1)) BETWEEN 19968 AND 40959 " +
+          "GROUP BY c ORDER BY cnt DESC LIMIT 300"
+        ).all(),
+      ]);
+      const total = (countRow?.cnt ?? 0).toLocaleString('ja-JP');
+      const kanjiChars = (kanjiRows.results ?? []).map(r => r.c);
+      const kanjiGrid = kanjiChars.length
+        ? `<div class="alpha-grid">${kanjiChars.map(c => `<a class="idx-c" href="/index/${encodeURIComponent(c)}">${c}</a>`).join('')}</div>`
+        : '<p style="color:#475569;font-size:.9em;">読み込み中…</p>';
       const kana = [
         ['あ','い','う','え','お'],['か','き','く','け','こ'],['さ','し','す','せ','そ'],
         ['た','ち','つ','て','と'],['な','に','ぬ','ね','の'],['は','ひ','ふ','へ','ほ'],
@@ -5605,6 +5632,10 @@ footer a{color:#6366f1;text-decoration:none}
   <div class="section">
     <h2>五十音順</h2>
     ${kanaGrid}
+  </div>
+  <div class="section">
+    <h2>漢字（出現頻度順・上位300字）</h2>
+    ${kanjiGrid}
   </div>
   <div class="section">
     <h2>アルファベット順</h2>
