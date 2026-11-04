@@ -350,6 +350,8 @@ h1.firstHeading{font-family:'Linux Libertine','Georgia','Times',serif;font-size:
         <li><a href="/network">Phoenixネットワーク</a></li>
         <li><a href="/wiki/Wikipedia">Wikipediaとは</a></li>
         <li><a href="/stats">統計情報</a></li>
+        <li><a href="https://hokudai-be-ambitious.com/wiki/network.html" rel="noopener">関連：真の未来開拓倶楽部 Wiki</a></li>
+        <li><a href="https://hokudai.fraise-clinic.com/hokudai-wiki/" rel="noopener">関連：北海道大学 事典</a></li>
       </ul>
     </div>
     <div class="sidebar-section">
@@ -4624,7 +4626,7 @@ footer a{color:var(--fg-dim);text-decoration:none;}
     </div>
   </div>
 </main>
-<footer><a href="/dashboard">← ダッシュボード</a> · <a href="/manifesto">Manifesto</a> · <a href="/protocol">Protocol</a></footer>
+<footer><a href="/dashboard">← ダッシュボード</a> · <a href="/manifesto">Manifesto</a> · <a href="/protocol">Protocol</a> · <a href="https://hokudai-be-ambitious.com/wiki/task002.html" rel="noopener">#task002</a> · <a href="https://hokudai-be-ambitious.com/wiki/network.html" rel="noopener">関連サイト</a></footer>
 <script>
 const RELAYS = ['wss://relay.nostr.band','wss://relay.damus.io','wss://nos.lol','wss://relay.snort.social','wss://nostr.bitcoiner.social'];
 let logEl;
