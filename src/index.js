@@ -2977,6 +2977,24 @@ function buildReplicationManifest(title, cid, quality, porCount) {
 }
 
 // ─── Wikipedia Vector 2022 スキンで記事を包む ─────────────────────────────────
+// 記事に対応する外部の解説（主題が一致するものだけ）。本文は書き換えず、記事の下に関連リンクとして添える。
+const GENTEN_BASE = 'https://hokudai-be-ambitious.com/wiki/';
+const GENTEN = {
+  '民主主義': ['genten-minshushugi', '民主主義を「記録・検証・撤回」の三機能で読む'],
+  '熟議民主主義': ['genten-judgi', '多数決の前に済ませること：構造化された議論の型'],
+  '元老院': ['genten-senate', '助言機関はいつ支配機関に変わるのか'],
+  '共和政ローマ': ['genten-senate', '助言機関はいつ支配機関に変わるのか'],
+  '検閲': ['genten-kenetsu', '削除と検閲を分けるもの：主体・基準・説明責任'],
+  'ハンナ・アーレント': ['genten-arendt', '公的な場の条件を、議論の場の設計に翻訳する'],
+  '合意形成': ['genten-gouikeisei', '合意を「検証できる記録」として残す'],
+  'クリエイティブ・コモンズ・ライセンス': ['genten-license', '知識を写さずに受け継ぐ編集方針'],
+};
+function gentenBox(title) {
+  const g = GENTEN[title];
+  if (!g) return '';
+  const esc = x => String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return `<aside class="noprint" style="margin:24px 0;padding:12px 16px;border:1px solid #c8ccd1;background:#f8f9fa;font-size:14px"><b>この記事の関連解説（外部）</b><br><a href="${GENTEN_BASE}${g[0]}.html" rel="noopener">${esc(g[1])}</a>　<small>真の未来開拓倶楽部 Wiki「原典から読む」</small></aside>`;
+}
 function wrapWithVectorSkin(html, title) {
   const safe = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const enc  = encodeURIComponent(title);
@@ -3107,6 +3125,7 @@ h1#firstHeading{font-family:'Linux Libertine','Georgia','Times',serif;font-size:
       <div id="mw-content-text" class="mw-body-content">
 ${bodyContent}
       </div>
+      ${gentenBox(title)}
     </div>
   </main>
 
