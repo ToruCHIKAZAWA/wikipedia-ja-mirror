@@ -2,26 +2,26 @@ import { schnorr }    from '@noble/curves/secp256k1.js';
 import { sha256 }     from '@noble/hashes/sha2.js';
 import { bytesToHex, hexToBytes } from '@noble/curves/utils.js';
 
-const BATCH_SIZE = 25; // processBatchはR2/D1のみ（IPFSはselfHeal担当）
+const BATCH_SIZE = 25; // processBatch ne traite que R2/D1 (l'épinglage IPFS relève de selfHeal)
 const WP = 'https://ja.wikipedia.org';
-const EC_SHARD_COUNT = 5;  // RS(3,5): 5シャード中3つで復元可能
+const EC_SHARD_COUNT = 5;  // RS(3,5) : reconstruction possible à partir de 3 fragments sur 5
 
 // ─── Phoenix Mesh Protocol v2 — Von Neumann Cellular Automaton Layer ─────────
 const GENOME_VERSION = 'v2.0.0';
 const PHOENIX_ORIGIN  = 'https://wikipedia-is-dead.com';
 
-// セルオートマトン状態関数: (cid, porCount) → UNPROCESSED|ENDANGERED|STABLE|ROBUST|IMMORTAL
-// 隣接ノードはこの状態を読み取り、ENDANGERED なら複製を補充する（状態遷移規則）
+// Fonction d'état de l'automate cellulaire : (cid, porCount) → UNPROCESSED|ENDANGERED|STABLE|ROBUST|IMMORTAL
+// Les nœuds voisins lisent cet état et, si l'article est ENDANGERED, ajoutent des réplicas (règle de transition d'état)
 function getArticleState(cid, porCount) {
-  if (!cid)          return 'UNPROCESSED'; // R2のみ、IPFSなし
-  if (porCount <= 0) return 'ENDANGERED';  // IPFS固定済みだが追加複製0
-  if (porCount <= 2) return 'LOW';         // 複製不足（target: 3以上）
-  if (porCount <= 6) return 'STABLE';      // 安定状態
-  if (porCount <= 9) return 'ROBUST';      // 高複製
-  return 'IMMORTAL';                       // 完全自律複製（R₀>1.0）
+  if (!cid)          return 'UNPROCESSED'; // R2 uniquement, sans IPFS
+  if (porCount <= 0) return 'ENDANGERED';  // Épinglé sur IPFS mais aucun réplica supplémentaire
+  if (porCount <= 2) return 'LOW';         // Réplication insuffisante (cible : 3 ou plus)
+  if (porCount <= 6) return 'STABLE';      // État stable
+  if (porCount <= 9) return 'ROBUST';      // Réplication élevée
+  return 'IMMORTAL';                       // Réplication entièrement autonome (R₀ > 1,0)
 }
 
-// ─── Nostr公開鍵（NOSTR_SKから導出） ───────────────────────────────────────
+// ─── Clé publique Nostr (dérivée de NOSTR_SK) ───────────────────────────────────────
 const NOSTR_RELAYS = [
   'wss://relay.nostr.band',
   'wss://relay.damus.io',
@@ -30,7 +30,7 @@ const NOSTR_RELAYS = [
   'wss://nostr.bitcoiner.social',
 ];
 
-// Erasure Coding + SSS + AES モジュール（動的ロード）
+// Module Erasure Coding + SSS + AES (chargement dynamique)
 let _erasureLoaded = false;
 let rsEncode, rsDecode, buildManifest, parseManifest;
 let sssShare, sssReconstruct, encryptBytes, decryptBytes;
@@ -48,9 +48,9 @@ async function loadErasure() {
   _erasureLoaded = true;
 }
 
-// ─── Service Worker スクリプト（Tier 2 — Phoenix Offline Node） ────────────
-// 全閲覧者が読んだ記事のオフラインノードになる
-// キャッシュ済み記事数をバッジで通知 → 読むほど強くなる
+// ─── Script du Service Worker (Tier 2 — Phoenix Offline Node) ────────────
+// Chaque visiteur devient un nœud hors ligne des articles qu'il a lus
+// Notifie par un badge le nombre d'articles en cache → plus on lit, plus le réseau est fort
 const SW_SCRIPT = `
 const CACHE = 'phoenix-mesh-v3';
 const OFFLINE_HTML = \`<!DOCTYPE html>
@@ -144,9 +144,9 @@ self.addEventListener('message', event => {
 });
 `;
 
-// ─── トップページ（宣言文） ───────────────────────────────────────────────────
+// ─── Page d'accueil (déclaration) ───────────────────────────────────────────────────
 async function buildHomepage(env) {
-  // D1から最新ミラー記事を取得
+  // Récupère depuis D1 les articles miroirs les plus récents
   let recentArticles = [];
   try {
     const res = await env.DB.prepare(
@@ -638,7 +638,7 @@ h1.firstHeading{font-family:'Linux Libertine','Georgia','Times',serif;font-size:
 </html>`;
 }
 
-// ─── ダッシュボード HTML ────────────────────────────────────────────────────
+// ─── HTML du tableau de bord ────────────────────────────────────────────────────
 function buildDashboard() {
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -1343,7 +1343,7 @@ lim_{NK → ∞} P_censor = 0   for any fixed p < 1
 </html>`;
 }
 
-// ─── Join Page: 有志協力者募集 ───────────────────────────────────────────────
+// ─── Page Join : appel à contributeurs bénévoles ───────────────────────────────────────────────
 function buildJoinPage() {
   return `<!DOCTYPE html>
 <html lang="ja" dir="ltr">
@@ -2228,23 +2228,23 @@ DHTそのものが分散型投票台帳。集計者が不要。カウンター�
 </html>`;
 }
 
-// ─── Phoenix Quality Score: HTMLシグナルからアルゴリズム品質を算出 ──────────
-// Wikipedia管理者の恣意的判断をアルゴリズムで置換する
-// 削除という概念は存在しない — 需要の重力が自然な優先順位を決める
+// ─── Phoenix Quality Score : calcule un score de qualité algorithmique à partir des signaux HTML ──────────
+// Remplace par un algorithme le jugement arbitraire des administrateurs de Wikipédia
+// La notion de suppression n'existe pas — la gravité de la demande fixe naturellement les priorités
 function computeQualityScore(html) {
-  // 参照数 (脚注・出典)
+  // Nombre de références (notes de bas de page, sources)
   const refCount  = (html.match(/<li[^>]+id="cite_note/g) || []).length
                   + (html.match(/class="[^"]*reference[^"]*"/g) || []).length;
-  // セクション数
+  // Nombre de sections
   const secCount  = (html.match(/<h[23][^>]*>/g) || []).length;
-  // インフォボックスあり
+  // Présence d'une infobox
   const hasInfobox = /class="[^"]*(?:infobox|wikitable)[^"]*"/i.test(html);
-  // 画像数
+  // Nombre d'images
   const imgCount  = (html.match(/<img [^>]+>/g) || []).length;
-  // カテゴリ数
+  // Nombre de catégories
   const catCount  = (html.match(/class="[^"]*mw-normal-catlinks[^"]*"[\s\S]{0,2000}?<li/g) || []).length
                   + (html.match(/\/wiki\/Category:/g) || []).length;
-  // 本文字数（タグ除去近似）
+  // Nombre de caractères du corps (approximation hors balises)
   const charCount = html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').length;
 
   const score = Math.round(
@@ -2260,7 +2260,7 @@ function computeQualityScore(html) {
   return { score, grade, refCount, secCount, hasInfobox, imgCount, catCount, charCount };
 }
 
-// ─── P2P UI + スクリプト注入（Tier 1, 2, 3） ──────────────────────────────
+// ─── Interface P2P + injection de scripts (Tier 1, 2, 3) ──────────────────────────────
 function buildP2POverlay(title, cid, quality = null, porCount = 0) {
   const safeTitle  = JSON.stringify(title);
   const cidDisplay = cid || "IPFSに未登録";
@@ -2272,7 +2272,7 @@ function buildP2POverlay(title, cid, quality = null, porCount = 0) {
     padding:2px 7px;border-radius:10px;border:1px solid ${gradeColor};cursor:default;letter-spacing:0.05em;">
     PQS ${quality.grade}${quality.score}</span>` : '';
 
-  // 強度バー: porCountが増えるほど太くなる (max width at 1000 reads)
+  // Barre d'intensité : plus porCount augmente, plus elle s'épaissit (largeur max à 1000 lectures)
   const strengthPct = Math.min(porCount / 1000, 1) * 100;
   const strengthColor = porCount >= 100 ? '#4ade80' : porCount >= 10 ? '#60a5fa' : '#475569';
   const strengthHtml = cid ? `<span id="seeder-strength"
@@ -2284,7 +2284,7 @@ function buildP2POverlay(title, cid, quality = null, porCount = 0) {
     </span>
   </span>` : '';
 
-  // Nakamoto係数: N = por_count（実績） + 2（R2+Pinata確定分）
+  // Coefficient de Nakamoto : N = por_count (mesuré) + 2 (R2 + Pinata, acquis)
   const nakN  = cid ? Math.min(porCount + 2, 99) : 1;
   const nakSt = nakN >= 21 ? 'IMMORTAL' : nakN >= 10 ? 'ROBUST' : nakN >= 7 ? 'STABLE' : nakN >= 4 ? 'ENDANGERED' : 'CRITICAL';
   const nakCol = { CRITICAL:'#ef4444', ENDANGERED:'#f97316', STABLE:'#3b82f6', ROBUST:'#4ade80', IMMORTAL:'#a855f7' }[nakSt];
@@ -2777,21 +2777,21 @@ const OG_TAGS = `<meta property="og:image" content="${OG_IMAGE}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="${OG_IMAGE}">`;
 
-// ─── WikipediaのHTMLを本家そのままの見た目に整える ──────────────────────────
+// ─── Mise en forme du HTML de Wikipédia à l'identique de l'original ──────────────────────────
 function prepareHTML(html) {
   return html
     .replace(/<base\b[^>]*>/gi, '')
     .replace(/<meta[^>]+http-equiv\s*=\s*["']?content-security-policy["']?[^>]*\/?>/gi, '')
-    // WikipediaのOG imageを上書き
+    // Remplace l'image OG de Wikipédia
     .replace(/<meta[^>]+property=["']og:image["'][^>]*\/?>/gi, '')
     .replace(/<meta[^>]+name=["']twitter:image["'][^>]*\/?>/gi, '')
     .replace('</head>', OG_TAGS + '\n</head>')
-    // Wikipedia由来のrobots noindexを除去（本サイトではすべてインデックス対象）
+    // Supprime le robots noindex hérité de Wikipédia (ici, tout est indexable)
     .replace(/<meta[^>]+name=["']robots["'][^>]*>/gi, '')
-    // ja.wikipedia.org の /wiki/ 記事リンクを本サイト内リンクに変換（内部PageRankを維持）
+    // Convertit les liens d'articles /wiki/ de ja.wikipedia.org en liens internes (conserve le PageRank interne)
     .replace(/href="https?:\/\/ja\.wikipedia\.org\/wiki\/([^"#?]{1,300})([^"]*)"/g,
       (_, t, rest) => `href="/wiki/${t}${rest}"`)
-    // /w/, /static/, /api/, /skins/, /extensions/, /resources/ パスをWikipedia絶対URLに
+    // Convertit les chemins /w/, /static/, /api/, /skins/, /extensions/, /resources/ en URL absolues de Wikipédia
     .replace(
       /((?:href|src|action)=["'])(\/(?:w|static|skins|extensions|resources|api)\/)/g,
       (_, attr, path) => attr + WP + path
@@ -2801,7 +2801,7 @@ function prepareHTML(html) {
     );
 }
 
-// ─── 記事本文から説明文を抽出（最大155文字）────────────────────────────────
+// ─── Extrait la description depuis le corps de l'article (155 caractères maximum)────────────────────────────────
 function extractDescription(html, title) {
   const m = html.match(/<p[^>]*>([\s\S]{30,800}?)<\/p>/i);
   if (m) {
@@ -2811,7 +2811,7 @@ function extractDescription(html, title) {
   return `${title}のWikipedia日本語版アーカイブ。IPFS・P2P分散配信による永久保存版。検閲不可能なオープン知識。`;
 }
 
-// ─── 記事ページ SEO インジェクション ─────────────────────────────────────────
+// ─── Injection SEO dans les pages d'articles ─────────────────────────────────────────
 function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
   const canonicalUrl = `https://wikipedia-is-dead.com/wiki/${encodeURIComponent(title)}`;
   const wpUrl = `https://ja.wikipedia.org/wiki/${encodeURIComponent(title)}`;
@@ -2822,7 +2822,7 @@ function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
   const safeDesc = desc.replace(/"/g, '&quot;');
   let r = html;
 
-  // <title> 最適化: "記事名 - Wikipedia日本語版アーカイブ"
+  // Optimisation de <title> : « Titre de l'article - Archive de Wikipédia en japonais »
   if (/<title>[^<]*<\/title>/i.test(r)) {
     r = r.replace(/<title>[^<]*<\/title>/i,
       `<title>${safeTitle} - Wikipedia日本語版アーカイブ | wikipedia-is-dead.com</title>`);
@@ -2831,7 +2831,7 @@ function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
       `<title>${safeTitle} - Wikipedia日本語版アーカイブ | wikipedia-is-dead.com</title>\n</head>`);
   }
 
-  // canonical URLを本サイトに差し替え
+  // Remplace l'URL canonique par celle de ce site
   if (/<link[^>]+rel=["']canonical["']/i.test(r)) {
     r = r.replace(/<link[^>]+rel=["']canonical["'][^>]*\/?>/gi,
       `<link rel="canonical" href="${canonicalUrl}">`);
@@ -2839,16 +2839,16 @@ function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
     r = r.replace('</head>', `<link rel="canonical" href="${canonicalUrl}">\n</head>`);
   }
 
-  // meta description 注入（既存を除去して差し替え）
+  // Injection de la meta description (supprime l'existante et la remplace)
   r = r.replace(/<meta[^>]+name=["']description["'][^>]*\/?>/gi, '');
   r = r.replace('</head>',
     `<meta name="description" content="${safeDesc}">\n</head>`);
 
-  // keywords（Bing向け）
+  // keywords (pour Bing)
   r = r.replace('</head>',
     `<meta name="keywords" content="${safeTitle},Wikipedia,アーカイブ,IPFS,百科事典,日本語">\n</head>`);
 
-  // robots: スニペット長・画像プレビューを最大化
+  // robots : maximise la longueur des extraits et l'aperçu des images
   r = r.replace('</head>',
     `<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">\n</head>`);
 
@@ -2856,7 +2856,7 @@ function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
   r = r.replace('</head>',
     `<link rel="alternate" hreflang="ja" href="${canonicalUrl}">\n</head>`);
 
-  // OG / Twitter 全置換
+  // Remplacement complet des balises OG / Twitter
   r = r.replace(/<meta[^>]+property=["']og:url["'][^>]*\/?>/gi, '');
   r = r.replace(/<meta[^>]+property=["']og:type["'][^>]*\/?>/gi, '');
   r = r.replace(/<meta[^>]+property=["']og:title["'][^>]*\/?>/gi, '');
@@ -2875,7 +2875,7 @@ function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
     `</head>`
   );
 
-  // JSON-LD: Article + BreadcrumbList（既存を除去して完全版注入）
+  // JSON-LD : Article + BreadcrumbList (supprime l'existant et injecte la version complète)
   r = r.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/gi, '');
   const ld = {
     "@context": "https://schema.org",
@@ -2934,13 +2934,13 @@ function injectArticleSEO(html, title, uploadedAt, wikiLastModified) {
   return r;
 }
 
-// ─── System III: 自己複製マニフェスト生成 ─────────────────────────────────────
-// Von Neumann自己複製オートマトン: 各記事がそれ自身の複製戦略を内包する
-// 他のノードはこのマニフェストを読み取り、複製先不足なら自動補充する
+// ─── Système III : génération du manifeste d'auto-réplication ─────────────────────────────────────
+// Automate auto-réplicant de Von Neumann : chaque article porte en lui sa propre stratégie de réplication
+// Les autres nœuds lisent ce manifeste et, s'il manque des cibles de réplication, en ajoutent automatiquement
 function buildReplicationManifest(title, cid, quality, porCount) {
-  // 伝播係数 R₀ = 記事の複製需要 / 複製コスト
-  // R₀ > 1.0 → 自律増殖 (IMMORTAL状態を維持)
-  // R₀ < 1.0 → 消滅リスク (緊急ピンが必要)
+  // Coefficient de propagation R₀ = demande de réplication de l'article / coût de réplication
+  // R₀ > 1,0 → prolifération autonome (l'état IMMORTAL est maintenu)
+  // R₀ < 1,0 → risque de disparition (épinglage d'urgence nécessaire)
   const pqsScore = quality?.score || 0;
   const r0 = parseFloat(((pqsScore / 50) * (1 + Math.log1p(porCount) / 5)).toFixed(2));
 
@@ -2949,19 +2949,19 @@ function buildReplicationManifest(title, cid, quality, porCount) {
 
   return JSON.stringify({
     v: 2,
-    genome: GENOME_VERSION,           // 普遍構成子: このバージョンで全ノードを再構築できる
+    genome: GENOME_VERSION,           // Constructeur universel : cette version permet de reconstruire tous les nœuds
     network: PHOENIX_ORIGIN,
     bootstrap: `${PHOENIX_ORIGIN}/bootstrap`,
     title,
     cid: cid || null,
-    state: getArticleState(cid, porCount),  // セルオートマトン状態
+    state: getArticleState(cid, porCount),  // État de l'automate cellulaire
     phase,
     r0,
     pqs: pqsScore,
     replication_target: replicationTarget,
     replication_count: cid ? 2 : 0,
     por_count: porCount,
-    // 状態遷移規則: 隣接ノードがこのルールに従い自律的に複製を補充する
+    // Règles de transition d'état : les nœuds voisins ajoutent de manière autonome des réplicas selon ces règles
     automaton_rules: {
       UNPROCESSED: 'pin_immediately',
       ENDANGERED:  'multipin_now',
@@ -2976,8 +2976,8 @@ function buildReplicationManifest(title, cid, quality, porCount) {
   });
 }
 
-// ─── Wikipedia Vector 2022 スキンで記事を包む ─────────────────────────────────
-// 記事に対応する外部の解説（主題が一致するものだけ）。本文は書き換えず、記事の下に関連リンクとして添える。
+// ─── Habillage de l'article dans le thème Wikipédia Vector 2022 ─────────────────────────────────
+// Explication externe correspondant à l'article (uniquement si le sujet coïncide). Le corps n'est pas modifié ; un lien associé est ajouté sous l'article.
 const GENTEN_BASE = 'https://hokudai-be-ambitious.com/wiki/';
 const GENTEN = {
   '民主主義': ['genten-minshushugi', '民主主義を「記録・検証・撤回」の三機能で読む'],
@@ -3000,7 +3000,7 @@ function wrapWithVectorSkin(html, title) {
   const enc  = encodeURIComponent(title);
   const st   = safe(title);
 
-  // Parsoid <head> と <body> を抽出
+  // Extrait <head> et <body> de Parsoid
   const headContent = (html.match(/<head[^>]*>([\s\S]*?)<\/head>/i) || ['',''])[1];
   const bodyContent = (html.match(/<body[^>]*>([\s\S]*?)<\/body>/i) || ['',''])[1] || html;
 
@@ -3146,7 +3146,7 @@ ${bodyContent}
 </body></html>`;
 }
 
-// ─── 記事HTMLにP2Pオーバーレイを注入 ──────────────────────────────────────
+// ─── Injecte la surcouche P2P dans le HTML de l'article ──────────────────────────────────────
 function injectP2P(html, title, cid, porCount = 0, uploadedAt = null, wikiLastModified = null) {
   const quality  = computeQualityScore(html);
   const prepared = prepareHTML(html);
@@ -3154,8 +3154,8 @@ function injectP2P(html, title, cid, porCount = 0, uploadedAt = null, wikiLastMo
   const skinHtml = wrapWithVectorSkin(seoMeta, title);
   const overlay  = buildP2POverlay(title, cid, quality, porCount);
 
-  // System III: 自己複製マニフェスト + ゲノムメタタグをHEADに埋め込む
-  // Quine的性質: どの記事1本からでもネットワーク全体を再構築できる
+  // Système III : intègre dans le HEAD le manifeste d'auto-réplication et la balise méta du génome
+  // Propriété de quine : n'importe quel article suffit à reconstruire l'ensemble du réseau
   const manifest = buildReplicationManifest(title, cid, quality, porCount);
   const state = getArticleState(cid, porCount);
   const genomeTags = [
@@ -3176,7 +3176,7 @@ function injectP2P(html, title, cid, porCount = 0, uploadedAt = null, wikiLastMo
   return withManifest + overlay;
 }
 
-// ─── Pinata IPFS アップロード ──────────────────────────────────────────────
+// ─── Téléversement IPFS via Pinata ──────────────────────────────────────────────
 async function pinToIPFS(jwt, title, html) {
   const formData = new FormData();
   const blob = new Blob([html], { type: "text/html; charset=utf-8" });
@@ -3192,10 +3192,10 @@ async function pinToIPFS(jwt, title, html) {
   return (await res.json()).IpfsHash;
 }
 
-// ─── Web3.Storage 二次ピン (STORACHA / w3up互換) ────────────────────────────
-// env.W3S_TOKEN があれば Pinata と並行してピン留めする
-// → Pinata が消えてもコンテンツが残る
-// ─── Web3.Storage (Storacha) ── Filecoinバックアップ付き ──────────────────
+// ─── Épinglage secondaire Web3.Storage (STORACHA / compatible w3up) ────────────────────────────
+// Si env.W3S_TOKEN est défini, épingle en parallèle de Pinata
+// → Le contenu subsiste même si Pinata disparaît
+// ─── Web3.Storage (Storacha) — avec sauvegarde Filecoin ──────────────────
 async function pinToWeb3Storage(token, title, html) {
   const blob = new Blob([html], { type: "text/html; charset=utf-8" });
   const res = await fetch("https://api.web3.storage/upload", {
@@ -3207,7 +3207,7 @@ async function pinToWeb3Storage(token, title, html) {
   return (await res.json()).cid;
 }
 
-// ─── Filebase ── IPFS RPC API（バケットスコープトークン）────────────────
+// ─── Filebase — API RPC IPFS (jeton limité à un bucket)────────────────
 async function pinToFilebase(rpcToken, title, html) {
   const form = new FormData();
   form.append("file", new Blob([html], { type: "text/html; charset=utf-8" }), `${title}.html`);
@@ -3220,7 +3220,7 @@ async function pinToFilebase(rpcToken, title, html) {
   return (await res.json()).Hash;
 }
 
-// ─── NFT.Storage ── 無料・永続・Filecoin保証 ────────────────────────────
+// ─── NFT.Storage — gratuit, permanent, garanti par Filecoin ────────────────────────────
 async function pinToNFTStorage(token, title, html) {
   const res = await fetch("https://api.nft.storage/upload", {
     method: "POST",
@@ -3235,7 +3235,7 @@ async function pinToNFTStorage(token, title, html) {
   return (await res.json()).value?.cid;
 }
 
-// ─── Lighthouse ── Filecoin永続保存（Raas対応）────────────────────────────
+// ─── Lighthouse — conservation permanente Filecoin (compatible RaaS)────────────────────────────
 async function pinToLighthouse(token, title, html) {
   const form = new FormData();
   form.append("file", new Blob([html], { type: "text/html; charset=utf-8" }), `${title}.html`);
@@ -3248,7 +3248,7 @@ async function pinToLighthouse(token, title, html) {
   return (await res.json()).Hash;
 }
 
-// ─── 全ピニングサービスに並列送信（fire-and-forget）────────────────────────
+// ─── Envoi en parallèle à tous les services d'épinglage (fire-and-forget)────────────────────────
 function pinToAllServices(env, title, html) {
   if (env.W3S_TOKEN)        pinToWeb3Storage(env.W3S_TOKEN, title, html).catch(() => {});
   if (env.FILEBASE_TOKEN)   pinToFilebase(env.FILEBASE_TOKEN, title, html).catch(() => {});
@@ -3256,9 +3256,9 @@ function pinToAllServices(env, title, html) {
   if (env.LIGHTHOUSE_TOKEN) pinToLighthouse(env.LIGHTHOUSE_TOKEN, title, html).catch(() => {});
 }
 
-// ─── Nostr記事イベント: 新CIDをNostrネットワークに記録 ───────────────────────
-// 記事タイトル・CID・URLを世界中のNostrリレーに配信する
-// これにより記事の存在証明がNostrに永続的に記録される
+// ─── Événement d'article Nostr : enregistre le nouveau CID sur le réseau Nostr ───────────────────────
+// Diffuse le titre, le CID et l'URL de l'article vers des relais Nostr du monde entier
+// La preuve d'existence de l'article est ainsi inscrite durablement sur Nostr
 async function publishArticleToNostr(env, title, cid) {
   if (!env.NOSTR_SK) return;
   try {
@@ -3267,7 +3267,7 @@ async function publishArticleToNostr(env, title, cid) {
     const url      = `https://wikipedia-is-dead.com/wiki/${encodeURIComponent(title)}`;
     const created_at = Math.floor(Date.now() / 1000);
 
-    // NIP-01 kind 1: short text note (Nostrタイムラインに流れる)
+    // NIP-01 kind 1 : short text note (apparaît dans la chronologie Nostr)
     const content = `📚 Phoenix Mesh アーカイブ\n「${title}」\nIPFS: ${cid}\n${url}`;
     const tags = [
       ['t',   'wikipedia'],
@@ -3284,7 +3284,7 @@ async function publishArticleToNostr(env, title, cid) {
 
     const event = { id: idHex, pubkey: pkHex, created_at, kind: 1, tags, content, sig: sigHex };
 
-    // 3リレーへ並列送信（fire-and-forget）
+    // Envoi en parallèle vers 3 relais (fire-and-forget)
     const relays = NOSTR_RELAYS.slice(0, 3);
     const results = await Promise.allSettled(relays.map(relay => new Promise((resolve, reject) => {
       let ws;
@@ -3299,13 +3299,13 @@ async function publishArticleToNostr(env, title, cid) {
       } catch (e) { clearTimeout(t); reject(e); }
     })));
 
-  } catch {} // fire-and-forget: 失敗しても記事ピン自体に影響しない
+  } catch {} // fire-and-forget : un échec n'affecte pas l'épinglage de l'article lui-même
 }
 
-// ─── Nostr DHT: 分散ノード発見とConsistent Hashing ──────────────────────────
-// ビットコインと同じ原理: 中央サーバー不要でノードがお互いを発見・協調する
+// ─── Nostr DHT : découverte distribuée des nœuds et hachage cohérent ──────────────────────────
+// Même principe que Bitcoin : les nœuds se découvrent et se coordonnent sans serveur central
 
-// タイトルをノード担当範囲にマッピングする高速ハッシュ（0-255）
+// Hachage rapide qui associe un titre à la plage de responsabilité d'un nœud (0-255)
 function titleHashSimple(title) {
   let h = 5381;
   for (let i = 0; i < title.length; i++) h = (((h << 5) + h) + title.charCodeAt(i)) | 0;
@@ -3331,7 +3331,7 @@ function cleanStaleNodes(reg, staleMs = 15 * 60 * 1000) {
   }
 }
 
-// Consistent Hashing: ノードID群を0-255の範囲に均等配置
+// Hachage cohérent : répartit uniformément les identifiants de nœuds sur la plage 0-255
 function assignNodeRange(reg, nodeId) {
   const ids = [...new Set([...Object.keys(reg.nodes), nodeId])].sort();
   const idx  = ids.indexOf(nodeId);
@@ -3340,7 +3340,7 @@ function assignNodeRange(reg, nodeId) {
   return { start: idx * size, end: Math.min((idx + 1) * size - 1, 255) };
 }
 
-// Nostrへノード登録イベントを送信（kind:30078 アプリ固有データ）
+// Envoie à Nostr l'événement d'enregistrement du nœud (kind:30078, données propres à l'application)
 async function publishNodeToNostr(env, nodeId, range) {
   if (!env.NOSTR_SK) return;
   try {
@@ -3355,7 +3355,7 @@ async function publishNodeToNostr(env, nodeId, range) {
       id: bytesToHex(idBytes), pubkey: pkHex, created_at, kind: 30078, tags, content,
       sig: bytesToHex(schnorr.sign(idBytes, skBytes)),
     };
-    // 2リレーへ送信（fire-and-forget）
+    // Envoi vers 2 relais (fire-and-forget)
     await Promise.allSettled(NOSTR_RELAYS.slice(0, 2).map(relay => new Promise((resolve, reject) => {
       let ws;
       const t = setTimeout(() => { try { ws?.close(); } catch {} reject(); }, 4000);
@@ -3368,11 +3368,11 @@ async function publishNodeToNostr(env, nodeId, range) {
   } catch {}
 }
 
-// ─── Self-Healing: CIDなし記事を自動再ピン ────────────────────────────────
+// ─── Auto-réparation : ré-épingle automatiquement les articles sans CID ────────────────────────────────
 async function selfHeal(env) {
   if (!env.PINATA_JWT) return { healed: 0, attempted: 0 };
 
-  // CIDが空でR2にHTMLが存在する記事を最大10件取得（新着優先）
+  // Récupère jusqu'à 10 articles dont le CID est vide et dont le HTML existe dans R2 (les plus récents d'abord)
   const result = await env.DB.prepare(
     "SELECT title FROM articles WHERE (cid IS NULL OR cid = '') ORDER BY rowid DESC LIMIT 10"
   ).all();
@@ -3387,7 +3387,7 @@ async function selfHeal(env) {
     try {
       const cid = await pinToIPFS(env.PINATA_JWT, title, html);
       await env.DB.prepare("UPDATE articles SET cid=? WHERE title=?").bind(cid, title).run();
-      // 二次ピン + Nostr記事イベント（fire-and-forget）
+      // Épinglage secondaire + événement d'article Nostr (fire-and-forget)
       pinToAllServices(env, title, html);
       publishArticleToNostr(env, title, cid).catch(() => {});
       healed++;
@@ -3397,13 +3397,13 @@ async function selfHeal(env) {
   return { healed, attempted: targets.length };
 }
 
-// ─── Replication Heal: ENDANGERED記事への自律的複製補充 ──────────────────────
-// セルオートマトン遷移規則 ENDANGERED → LOW: CIDはあるが追加ピンが0の記事を検出し
-// 二次ピンサービスへ投入することで複製係数を引き上げる（中央調整者不要）
+// ─── Replication Heal : ajout autonome de réplicas pour les articles ENDANGERED ──────────────────────
+// Règle de transition ENDANGERED → LOW de l'automate cellulaire : détecte les articles qui ont un CID mais aucun épinglage supplémentaire,
+// et les soumet aux services d'épinglage secondaires pour augmenter le facteur de réplication (aucun coordinateur central requis)
 async function replicationHeal(env) {
   if (!env.PINATA_JWT) return { healed: 0 };
 
-  // ENDANGERED: cid が存在するが por_count = 0 の記事（追加複製が一切ない）
+  // ENDANGERED : article dont le cid existe mais dont por_count = 0 (aucune réplique supplémentaire)
   const result = await env.DB.prepare(
     "SELECT title, cid FROM articles WHERE cid != '' AND cid IS NOT NULL AND por_count = 0 ORDER BY rowid DESC LIMIT 8"
   ).all().catch(() => ({ results: [] }));
@@ -3415,9 +3415,9 @@ async function replicationHeal(env) {
     const obj = await env.HTML_BUCKET.get(title).catch(() => null);
     if (!obj) return;
     const html = await obj.text();
-    // 二次ピンを並列投入（Pinataには再ピンせず、他のサービスのみ）
+    // Soumet les épinglages secondaires en parallèle (pas de nouvel épinglage sur Pinata, uniquement les autres services)
     await pinToAllServices(env, title, html).catch(() => {});
-    // por_count を 1 に設定して ENDANGERED → LOW へ遷移
+    // Fixe por_count à 1 pour passer de ENDANGERED à LOW
     await env.DB.prepare(
       "UPDATE articles SET por_count = MAX(por_count, 1) WHERE title = ?"
     ).bind(title).run().catch(() => {});
@@ -3427,12 +3427,12 @@ async function replicationHeal(env) {
   return { healed, attempted: targets.length };
 }
 
-// ─── Priority Pin: Wikimedia閲覧数APIで高需要記事を優先IPFS固定 ───────────
-// "需要の重力が自然な秩序を作る" — 削除という概念の代わりに需要で優先順位を決める
+// ─── Priority Pin : épingle en priorité sur IPFS les articles très demandés, d'après l'API des pages vues de Wikimedia ───────────
+// « La gravité de la demande crée un ordre naturel » — la priorité se décide par la demande, et non par la suppression
 async function priorityPin(env) {
   if (!env.PINATA_JWT) return { pinned: 0 };
 
-  // 閲覧数上位タイトルを取得（R2に24時間キャッシュ）
+  // Récupère les titres les plus consultés (cache de 24 heures dans R2)
   let topTitles = [];
   const now = Date.now();
   const cacheObj = await env.HTML_BUCKET.get('__top-articles.json').catch(() => null);
@@ -3465,7 +3465,7 @@ async function priorityPin(env) {
 
   if (!topTitles.length) return { pinned: 0 };
 
-  // CIDなし記事を最大5件ピン固定（閲覧数降順）
+  // Épingle jusqu'à 5 articles sans CID (par ordre décroissant de consultations)
   let pinned = 0;
   for (const title of topTitles) {
     if (pinned >= 5) break;
@@ -3486,8 +3486,8 @@ async function priorityPin(env) {
   return { pinned };
 }
 
-// ─── Nostr: 記事インデックスを分散リレーに署名・配布する ──────────────────
-// 目的: サイトが消えても世界中のNostrリレーに索引が残る
+// ─── Nostr : signe et distribue l'index des articles vers les relais distribués ──────────────────
+// Objectif : même si le site disparaît, l'index subsiste sur les relais Nostr du monde entier
 // NIP-01 + NIP-78 (kind 30078: replaceable application-specific data)
 async function publishToNostr(env) {
   if (!env.NOSTR_SK) return { relays: 0, skipped: 'no key' };
@@ -3495,7 +3495,7 @@ async function publishToNostr(env) {
   const skBytes = hexToBytes(env.NOSTR_SK);
   const pkHex   = bytesToHex(schnorr.getPublicKey(skBytes));
 
-  // 最新版メタデータを取得
+  // Récupère les métadonnées de la dernière version
   const [verObj, statsObj] = await Promise.all([
     env.HTML_BUCKET.get('__ec-version.json').catch(() => null),
     env.HTML_BUCKET.get('__stats.json').catch(() => null),
@@ -3525,7 +3525,7 @@ async function publishToNostr(env) {
     ['name', 'Phoenix Mesh — Wikipedia IPFS Mirror Index'],
   ];
 
-  // NIP-01 イベントID = SHA256([0, pk, created_at, kind, tags, content])
+  // ID d'événement NIP-01 = SHA256([0, pk, created_at, kind, tags, content])
   const serialized = JSON.stringify([0, pkHex, created_at, 30078, tags, content]);
   const idBytes    = sha256(new TextEncoder().encode(serialized));
   const idHex      = bytesToHex(idBytes);
@@ -3536,12 +3536,12 @@ async function publishToNostr(env) {
     tags, content, sig: sigHex,
   };
 
-  // R2に保存（最新イベントのキャッシュ）
+  // Enregistre dans R2 (cache du dernier événement)
   await env.HTML_BUCKET.put('__nostr-latest.json', JSON.stringify(event), {
     httpMetadata: { contentType: 'application/json' },
   }).catch(() => {});
 
-  // 並列でリレーに送信（各5秒タイムアウト）
+  // Envoie en parallèle aux relais (délai de 5 secondes chacun)
   const results = await Promise.allSettled(
     NOSTR_RELAYS.map(relay => new Promise((resolve, reject) => {
       let ws;
@@ -3564,9 +3564,9 @@ async function publishToNostr(env) {
   return { relays: published.length, eventId: idHex.slice(0, 16) + '…', pubkey: pkHex };
 }
 
-// ─── Erasure Coding: マニフェストを RS(3,5) でエンコードしてR2に保存 ─────
+// ─── Erasure Coding : encode le manifeste en RS(3,5) et l'enregistre dans R2 ─────
 async function encodeManifestToShards(env) {
-  // D1からCIDインデックス全件取得（ページング）
+  // Récupère tout l'index des CID depuis D1 (pagination)
   const LIMIT = 50000;
   const allArticles = [];
   let offset = 0;
@@ -3584,7 +3584,7 @@ async function encodeManifestToShards(env) {
 
   await loadErasure();
 
-  // ── マニフェスト・チェーン: 前バージョンのhashを計算してContinuity不変条件を確立 ──
+  // ── Chaîne de manifestes : calcule le hash de la version précédente pour établir l'invariant de continuité ──
   // Bitcoin's blockchain: block_N commits to hash(block_{N-1})
   // Phoenix chain:  version_N commits to hash(manifest_enc_{N-1})
   const prevVersionObj = await env.HTML_BUCKET.get('__ec-version.json').catch(() => null);
@@ -3601,32 +3601,32 @@ async function encodeManifestToShards(env) {
     }
   }
 
-  // バイナリマニフェスト生成
+  // Génération du manifeste binaire
   const manifest = buildManifest(allArticles);
 
-  // AES-256-GCM でマニフェストを暗号化（ランダム鍵・IV）
+  // Chiffre le manifeste en AES-256-GCM (clé et IV aléatoires)
   const { ciphertext, iv, keyRaw } = await encryptBytes(manifest);
 
-  // SSS(k=3, n=5) で 32B AES鍵を5シェアに分割
-  // 各シェアは GF(2^8)上の多項式評価値 → 乱数と区別不可能
+  // Divise la clé AES de 32 octets en 5 parts par SSS (k=3, n=5)
+  // Chaque part est la valeur d'un polynôme sur GF(2^8) → indiscernable d'un nombre aléatoire
   const keyShares = sssShare(keyRaw, EC_SHARD_COUNT, 3);
 
-  // IV(12B) || ciphertext を1バイナリに結合
+  // Concatène IV (12 octets) || ciphertext en un seul binaire
   const encPacked = new Uint8Array(12 + ciphertext.length);
   encPacked.set(iv, 0);
   encPacked.set(ciphertext, 12);
 
-  // version.json: チェーンメタデータ（公開 — encryptedデータの外側）
+  // version.json : métadonnées de la chaîne (publiques — hors des données chiffrées)
   const versionData = {
     v:         newVersionNum,
     ts:        new Date().toISOString(),
     articles:  allArticles.length,
-    prev_hash: prevHash,           // H(manifest_enc_{N-1}) — チェーン連結点
+    prev_hash: prevHash,           // H(manifest_enc_{N-1}) — point de liaison de la chaîne
     size:      encPacked.length,
     algorithm: 'AES-256-GCM+SSS(k=3,n=5)',
   };
 
-  // R2に保存: 暗号化マニフェスト + 5キーシェア + バージョンチェーン
+  // Enregistre dans R2 : manifeste chiffré + 5 parts de clé + chaîne de versions
   await Promise.all([
     env.HTML_BUCKET.put('__ec-manifest.enc', encPacked, {
       httpMetadata: { contentType: 'application/octet-stream' },
@@ -3652,9 +3652,9 @@ async function encodeManifestToShards(env) {
   };
 }
 
-// ─── SSS: キーシェアの健全性確認・欠損シェア自動修復 ──────────────────────
+// ─── SSS : vérification de l'intégrité des parts de clé et réparation automatique des parts manquantes ──────────────────────
 async function verifyOrReconstructShards(env) {
-  // 暗号化マニフェストとキーシェアの存在確認
+  // Vérifie la présence du manifeste chiffré et des parts de clé
   const [encCheck, ...shareChecks] = await Promise.all([
     env.HTML_BUCKET.head('__ec-manifest.enc').then(r => !!r).catch(() => false),
     ...Array.from({ length: EC_SHARD_COUNT }, (_, i) =>
@@ -3669,7 +3669,7 @@ async function verifyOrReconstructShards(env) {
   if (healthy < 3)  return { status: 'unrecoverable', healthy, total: EC_SHARD_COUNT };
 
   if (healthy === EC_SHARD_COUNT) {
-    // 全シェア正常 — マニフェストを復号せず統計・チェーンメタから返す
+    // Toutes les parts sont saines — renvoie les statistiques et les métadonnées de la chaîne sans déchiffrer le manifeste
     const [statsObj, verObj] = await Promise.all([
       env.HTML_BUCKET.get('__stats.json').catch(() => null),
       env.HTML_BUCKET.get('__ec-version.json').catch(() => null),
@@ -3688,7 +3688,7 @@ async function verifyOrReconstructShards(env) {
     };
   }
 
-  // 3シェア以上あれば鍵を再構成して欠損シェアを補充
+  // Avec 3 parts ou plus, reconstitue la clé et complète les parts manquantes
   await loadErasure();
   const chosenIndices = healthyIndices.slice(0, 3);
   const chosenShares = await Promise.all(
@@ -3700,7 +3700,7 @@ async function verifyOrReconstructShards(env) {
   if (chosenShares.some(s => !s)) return { status: 'reconstruct_failed', healthy };
 
   try {
-    // ラグランジュ補間で AES鍵を復元し、5シェアを再生成して欠損分を補充
+    // Restaure la clé AES par interpolation de Lagrange, régénère les 5 parts et complète celles qui manquent
     const keyRaw = sssReconstruct(chosenShares, chosenIndices.map(i => i + 1));
     const freshShares = sssShare(keyRaw, EC_SHARD_COUNT, 3);
     const missingIndices = shareChecks.map((ok, i) => ok ? -1 : i).filter(i => i >= 0);
@@ -3716,13 +3716,13 @@ async function verifyOrReconstructShards(env) {
   }
 }
 
-// ─── R2 statsキャッシュ（D1 COUNT(*)スキャンを回避） ──────────────────────
+// ─── Cache de statistiques R2 (évite le balayage COUNT(*) de D1) ──────────────────────
 async function updateStatsCache(env, deltaTotal, deltaIpfs, lastTitle) {
   try {
     const existing = await env.HTML_BUCKET.get('__stats.json');
     const prev = existing ? JSON.parse(await existing.text()) : {};
     const next = {
-      ...prev,  // 全フィールドを保持（total_por, nostr_articles, nostr_batch_offset など）
+      ...prev,  // Conserve tous les champs (total_por, nostr_articles, nostr_batch_offset, etc.)
       total_count:  (prev.total_count || 0) + deltaTotal,
       ipfs_count:   (prev.ipfs_count  || 0) + deltaIpfs,
       last_title:   lastTitle || prev.last_title || '',
@@ -3735,9 +3735,9 @@ async function updateStatsCache(env, deltaTotal, deltaIpfs, lastTitle) {
   } catch {}
 }
 
-// ─── 1バッチ処理（Cronから呼ばれる） ──────────────────────────────────────
-// ─── AI特筆性スコアリング ─────────────────────────────────────────────────────
-// 記事の特筆性を客観的指標で0-100点評価
+// ─── Traitement d'un lot (appelé par Cron) ──────────────────────────────────────
+// ─── Notation de notoriété par IA ─────────────────────────────────────────────────────
+// Évalue la notoriété d'un article de 0 à 100 points à l'aide d'indicateurs objectifs
 function scoreNotability(html, title) {
   const text = html.replace(/<[^>]+>/g, ' ');
   const charCount   = text.length;
@@ -3748,16 +3748,16 @@ function scoreNotability(html, title) {
   const sectionCount = (html.match(/<h[23]/gi) || []).length;
   const hasCategory = /カテゴリ|Category/i.test(html);
 
-  // 重み付きスコア（Wikipedia特筆性基準に近似）
+  // Score pondéré (approximation des critères de notoriété de Wikipédia)
   let score = 0;
-  score += Math.min(charCount / 500, 30);     // 文字数 (max 30点)
-  score += Math.min(refCount * 2, 25);         // 出典数 (max 25点)
-  score += Math.min(extLinks, 10);             // 外部リンク (max 10点)
-  score += hasInfobox ? 10 : 0;               // Infobox有無
-  score += hasImage ? 5 : 0;                  // 画像有無
-  score += Math.min(sectionCount * 2, 10);    // 節構成 (max 10点)
-  score += hasCategory ? 5 : 0;              // カテゴリ有無
-  score += title.length < 30 ? 5 : 0;        // 簡潔なタイトル
+  score += Math.min(charCount / 500, 30);     // Nombre de caractères (30 points max)
+  score += Math.min(refCount * 2, 25);         // Nombre de sources (25 points max)
+  score += Math.min(extLinks, 10);             // Liens externes (10 points max)
+  score += hasInfobox ? 10 : 0;               // Présence d'une infobox
+  score += hasImage ? 5 : 0;                  // Présence d'images
+  score += Math.min(sectionCount * 2, 10);    // Structure en sections (10 points max)
+  score += hasCategory ? 5 : 0;              // Présence de catégories
+  score += title.length < 30 ? 5 : 0;        // Titre concis
 
   return {
     score: Math.round(Math.min(score, 100)),
@@ -3767,10 +3767,10 @@ function scoreNotability(html, title) {
   };
 }
 
-// ─── Wikipedia Recent Changes 追従 ───────────────────────────────────────────
-// 本家Wikipediaの変更をリアルタイムで検出し、R2/D1を更新 + diffを記録する
+// ─── Suivi des Recent Changes de Wikipédia ───────────────────────────────────────────
+// Détecte en temps réel les modifications de Wikipédia, met à jour R2/D1 et enregistre le diff
 async function syncRecentChanges(env) {
-  // 同期状態の読み込み（最終同期タイムスタンプ + APIcontinueトークン）
+  // Lecture de l'état de synchronisation (dernier horodatage synchronisé + jeton continue de l'API)
   const stateObj = await env.HTML_BUCKET.get('__sync_state.json').catch(() => null);
   const state    = stateObj ? JSON.parse(await stateObj.text()) : {};
   const now      = new Date().toISOString();
@@ -3804,7 +3804,7 @@ async function syncRecentChanges(env) {
     return { synced: 0 };
   }
 
-  // 1回のcronで最大15記事（タイムアウト回避）
+  // Jusqu'à 15 articles par cron (évite les délais d'attente dépassés)
   const toProcess = changes.slice(0, 15);
   let synced = 0;
 
@@ -3814,7 +3814,7 @@ async function syncRecentChanges(env) {
       const revid    = change.revid    ?? 0;
       const oldRevid = change.old_revid ?? 0;
 
-      // Parsoid REST APIで最新HTMLを取得
+      // Récupère le dernier HTML via l'API REST de Parsoid
       const htmlResp = await fetch(
         `https://ja.wikipedia.org/api/rest_v1/page/html/${encodeURIComponent(title)}`,
         { headers: { 'User-Agent': 'PhoenixMesh/2.0', Accept: 'text/html' } }
@@ -3823,17 +3823,17 @@ async function syncRecentChanges(env) {
       const newHtml = await htmlResp.text();
       if (newHtml.length < 500) continue;
 
-      // 旧HTMLのサイズ取得（diff用）
+      // Récupère la taille de l'ancien HTML (pour le diff)
       const oldObj  = await env.HTML_BUCKET.head(title).catch(() => null);
       const oldSize = oldObj?.size ?? 0;
 
-      // R2を最新HTMLで上書き
+      // Écrase R2 avec le dernier HTML
       await env.HTML_BUCKET.put(title, newHtml, {
         httpMetadata: { contentType: 'text/html; charset=utf-8' },
         customMetadata: { revid: String(revid), synced_at: now },
       });
 
-      // diff metadataをR2に保存（__diffs/{title}/{revid}.json）
+      // Enregistre les métadonnées du diff dans R2 (__diffs/{title}/{revid}.json)
       const diffPayload = {
         title, revid, old_revid: oldRevid,
         editor:   change.user    ?? '',
@@ -3851,7 +3851,7 @@ async function syncRecentChanges(env) {
         { httpMetadata: { contentType: 'application/json' } }
       );
 
-      // D1: articles更新 + article_diffs記録
+      // D1 : mise à jour de articles + enregistrement dans article_diffs
       await env.DB.batch([
         env.DB.prepare(`
           INSERT INTO articles (title, cid, uploaded_at, revid, wiki_last_modified)
@@ -3870,17 +3870,17 @@ async function syncRecentChanges(env) {
       ]);
 
       synced++;
-    } catch (_) { /* 個別失敗はスキップ */ }
+    } catch (_) { /* Ignore les échecs individuels */ }
   }
 
-  // 更新記事をIndexNow + Google Indexing APIに即時通知
+  // Notifie immédiatement IndexNow et l'API Google Indexing des articles mis à jour
   const syncedTitles = toProcess.slice(0, synced).map(c => c.title);
   if (syncedTitles.length) {
     await submitToIndexNow(env, syncedTitles).catch(() => {});
     await submitToGoogleIndexingAPI(env, syncedTitles).catch(() => {});
   }
 
-  // 同期状態を更新（未処理の続きがあればrc_continueを保持）
+  // Met à jour l'état de synchronisation (conserve rc_continue s'il reste des éléments à traiter)
   const lastTimestamp = changes[changes.length - 1]?.timestamp ?? now;
   await env.HTML_BUCKET.put('__sync_state.json', JSON.stringify({
     last_sync:    nextContinue ? state.last_sync : lastTimestamp,
@@ -3893,9 +3893,9 @@ async function syncRecentChanges(env) {
   return { synced, total: changes.length, continue: !!nextContinue };
 }
 
-// ─── Wikipedia削除ログ監視 + 削除記事の緊急アーカイブ ───────────────────────
+// ─── Surveillance du journal des suppressions de Wikipédia + archivage d'urgence des articles supprimés ───────────────────────
 async function watchDeletionLog(env) {
-  // Wikipedia削除ログ（直近50件）を取得
+  // Récupère le journal des suppressions de Wikipédia (50 dernières entrées)
   const res = await fetch(
     `${WP}/w/api.php?action=query&list=logevents&letype=delete&lelimit=50&format=json`,
     { headers: { 'User-Agent': 'WikipediaIPFSMirror/1.0 (chikazawa@medi-face.co.jp)' } }
@@ -3908,13 +3908,13 @@ async function watchDeletionLog(env) {
 
   for (const event of events) {
     const title = event.title;
-    if (!title || event.ns !== 0) continue; // 記事名前空間のみ
+    if (!title || event.ns !== 0) continue; // Espace de noms des articles uniquement
 
-    // すでにミラー済みか確認
+    // Vérifie s'il est déjà en miroir
     const existing = await env.HTML_BUCKET.get(title).catch(() => null);
-    if (existing) continue; // すでに保存済み → スキップ
+    if (existing) continue; // Déjà enregistré → ignorer
 
-    // Wayback Machine から復元を試みる
+    // Tente une restauration depuis la Wayback Machine
     const wbUrl = `https://archive.org/wayback/available?url=ja.wikipedia.org/wiki/${encodeURIComponent(title)}`;
     const wbRes = await fetch(wbUrl).catch(() => null);
     if (!wbRes?.ok) continue;
@@ -3931,7 +3931,7 @@ async function watchDeletionLog(env) {
     const html = await archived.text();
     const notability = scoreNotability(html, title);
 
-    // R2に保存
+    // Enregistre dans R2
     await env.HTML_BUCKET.put(title, html, {
       httpMetadata: { contentType: 'text/html; charset=utf-8' },
       customMetadata: {
@@ -3943,7 +3943,7 @@ async function watchDeletionLog(env) {
       },
     });
 
-    // D1に記録（削除フラグ付き + deleted_articlesテーブルに削除メタデータ）
+    // Enregistre dans D1 (avec l'indicateur de suppression + métadonnées de suppression dans la table deleted_articles)
     await env.DB.batch([
       env.DB.prepare(
         `INSERT INTO articles (title, cid, uploaded_at) VALUES (?, '', datetime('now'))
@@ -3965,18 +3965,18 @@ async function watchDeletionLog(env) {
       ),
     ]).catch(() => {});
 
-    // IPFSピン固定
+    // Épinglage IPFS
     if (env.PINATA_JWT) {
       const cid = await pinToIPFS(env.PINATA_JWT, title, html).catch(() => null);
       if (cid) {
         await env.DB.prepare("UPDATE articles SET cid=? WHERE title=?").bind(cid, title).run();
         pinToAllServices(env, title, html);
-        // Nostrに「削除記事を救出した」証明を刻む
+        // Grave sur Nostr la preuve que « l'article supprimé a été sauvé »
         await publishArticleToNostr(env, title, cid).catch(() => {});
       }
     }
 
-    // 削除イベントを stats に記録
+    // Enregistre l'événement de suppression dans stats
     const statsObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
     const stats = statsObj ? JSON.parse(await statsObj.text()) : {};
     stats.rescued_from_deletion = (stats.rescued_from_deletion || 0) + 1;
@@ -3985,33 +3985,33 @@ async function watchDeletionLog(env) {
       { httpMetadata: { contentType: 'application/json' } });
 
     rescued++;
-    if (rescued >= 5) break; // 1回のcronで最大5件
+    if (rescued >= 5) break; // Jusqu'à 5 éléments par cron
   }
 
   return { checked: events.length, rescued };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// VON NEUMANN SYSTEMS — Phoenix Mesh 第二世代
+// VON NEUMANN SYSTEMS — Phoenix Mesh, deuxième génération
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── System I: 予測的先制保全 (Predictive Pre-emptive Preservation) ───────────
-// Von Neumann自己複製論文の核心:「システムは自身の複製を環境変化より先に行う」
-// 削除ログ(事後)ではなく削除テンプレート(事前)を監視し、記事が消える前に捕捉する
+// ─── Système I : préservation prédictive et préventive (Predictive Pre-emptive Preservation) ───────────
+// Cœur de l'article sur l'auto-réplication de Von Neumann : « un système se réplique avant que l'environnement ne change »
+// Surveille non pas le journal des suppressions (a posteriori) mais les modèles de suppression (a priori), et capture l'article avant sa disparition
 async function watchDeletionProposals(env) {
-  // 即時削除・通常削除・特筆性テンプレートを並列監視
+  // Surveille en parallèle les modèles de suppression immédiate, de suppression normale et de doute sur la notoriété
   const templates = [
-    'Template:即時削除',      // 即時削除タグ (最緊急)
-    'Template:削除依頼',      // 削除依頼タグ
-    'Template:特筆性',        // 特筆性疑義タグ
-    'Template:Orphan',        // 孤立記事 (リンク切れリスク)
+    'Template:即時削除',      // Balise de suppression immédiate (la plus urgente)
+    'Template:削除依頼',      // Balise de demande de suppression
+    'Template:特筆性',        // Balise de doute sur la notoriété
+    'Template:Orphan',        // Article orphelin (risque de liens rompus)
   ];
 
   let preempted = 0;
   const results = [];
 
   for (const tmpl of templates) {
-    if (preempted >= 8) break; // 1cron最大8件
+    if (preempted >= 8) break; // 8 éléments au maximum par cron
     const params = new URLSearchParams({
       action: 'query', list: 'embeddedin',
       eititle: tmpl, einamespace: '0', eilimit: '20', format: 'json',
@@ -4029,11 +4029,11 @@ async function watchDeletionProposals(env) {
       if (preempted >= 8) break;
       const title = art.title;
 
-      // すでにミラー済みならスキップ
+      // Ignorer s'il est déjà en miroir
       const existing = await env.HTML_BUCKET.get(title).catch(() => null);
       if (existing) continue;
 
-      // Wikipediaから生HTMLを直接取得（削除前に確保）
+      // Récupère directement le HTML brut depuis Wikipédia (sécurisé avant la suppression)
       const wpRes = await fetch(`${WP}/wiki/${encodeURIComponent(title)}`, {
         headers: { 'User-Agent': 'WikipediaIPFSMirror/1.0 (hello@medi-face.co.jp)', Accept: 'text/html' },
         signal: AbortSignal.timeout(10000),
@@ -4043,7 +4043,7 @@ async function watchDeletionProposals(env) {
       const html = await wpRes.text();
       const notability = scoreNotability(html, title);
 
-      // R2に保存（脅威メタデータ付き）
+      // Enregistre dans R2 (avec les métadonnées de menace)
       await env.HTML_BUCKET.put(title, html, {
         httpMetadata: { contentType: 'text/html; charset=utf-8' },
         customMetadata: {
@@ -4055,13 +4055,13 @@ async function watchDeletionProposals(env) {
         },
       }).catch(() => {});
 
-      // D1に記録
+      // Enregistre dans D1
       await env.DB.prepare(
         `INSERT INTO articles (title, cid, uploaded_at) VALUES (?, '', datetime('now'))
          ON CONFLICT(title) DO NOTHING`
       ).bind(title).run().catch(() => {});
 
-      // 高特筆性記事は即座にIPFS固定
+      // Les articles à forte notoriété sont immédiatement épinglés sur IPFS
       if (notability.score >= 50 && env.PINATA_JWT) {
         const cid = await pinToIPFS(env.PINATA_JWT, title, html).catch(() => null);
         if (cid) {
@@ -4076,7 +4076,7 @@ async function watchDeletionProposals(env) {
     }
   }
 
-  // 先制保全統計を更新
+  // Met à jour les statistiques de préservation préventive
   if (results.length > 0) {
     const statsObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
     const stats = statsObj ? JSON.parse(await statsObj.text()) : {};
@@ -4089,7 +4089,7 @@ async function watchDeletionProposals(env) {
   return { preempted, results };
 }
 
-// ─── IndexNow: Bing/Yahoo/Yandex/Naver に新記事URLを即時通知 ────────────────
+// ─── IndexNow : notifie immédiatement Bing/Yahoo/Yandex/Naver des URL des nouveaux articles ────────────────
 async function submitToIndexNow(env, titles) {
   if (!env.INDEXNOW_KEY || !titles.length) return;
   const urlList = titles.map(t => `https://wikipedia-is-dead.com/wiki/${encodeURIComponent(t)}`);
@@ -4105,7 +4105,7 @@ async function submitToIndexNow(env, titles) {
   }).catch(() => {});
 }
 
-// ─── Google Indexing API: サービスアカウントJWTでURLを直接プッシュ ──────────
+// ─── Google Indexing API : envoie directement les URL avec un JWT de compte de service ──────────
 async function getGoogleAccessToken(saKeyJson) {
   const sa = JSON.parse(saKeyJson);
   const now = Math.floor(Date.now() / 1000);
@@ -4141,7 +4141,7 @@ async function submitToGoogleIndexingAPI(env, titles) {
   try {
     const token = await getGoogleAccessToken(env.GOOGLE_SA_KEY);
     if (!token) return;
-    // 200 URL/日のデフォルト上限に配慮して最大5件/cron
+    // Tient compte de la limite par défaut de 200 URL/jour : 5 éléments par cron au maximum
     const batch = titles.slice(0, 5);
     await Promise.all(batch.map(t =>
       fetch('https://indexing.googleapis.com/v3/urlNotifications:publish', {
@@ -4153,7 +4153,7 @@ async function submitToGoogleIndexingAPI(env, titles) {
   } catch {}
 }
 
-// ─── IndexNow バルク送信（全記事を10,000件/cron で順次プッシュ）──────────────
+// ─── Envoi en masse IndexNow (tous les articles, 10 000 par cron, de façon séquentielle)──────────────
 async function indexNowBulkBatch(env) {
   if (!env.INDEXNOW_KEY) return;
   const cursorObj = await env.HTML_BUCKET.get('__indexnow_cursor.json').catch(() => null);
@@ -4180,7 +4180,7 @@ async function indexNowBulkBatch(env) {
     JSON.stringify({ offset: nextOffset, done, updated_at: new Date().toISOString() }));
 }
 
-// ─── サイトマップ ping（Google + Bing）──────────────────────────────────────
+// ─── Ping du sitemap (Google + Bing)──────────────────────────────────────
 async function pingSitemaps() {
   const sm = encodeURIComponent('https://wikipedia-is-dead.com/sitemap-index.xml');
   await Promise.all([
@@ -4189,13 +4189,13 @@ async function pingSitemaps() {
   ]);
 }
 
-// ─── Knowledge Graph Cascade: リンクトポロジーによる自律伝播 ─────────────────
-// 記事AのHTMLからWikipedia内部リンクを抽出し、BFSキューに積む
-// これにより保全がアルファベット順ではなく意味的なつながりで広がる
+// ─── Knowledge Graph Cascade : propagation autonome par la topologie des liens ─────────────────
+// Extrait du HTML de l'article A les liens internes de Wikipédia et les place dans la file BFS
+// La préservation se propage ainsi selon les liens sémantiques, et non par ordre alphabétique
 function extractWikiLinks(html, limit = 20) {
   const seen = new Set();
-  // Wikipedia HTML は絶対URL (https://ja.wikipedia.org/wiki/TITLE) を使う
-  // 相対URL (/wiki/TITLE) にもフォールバック対応
+  // Le HTML de Wikipédia utilise des URL absolues (https://ja.wikipedia.org/wiki/TITLE)
+  // Prend aussi en charge, en repli, les URL relatives (/wiki/TITLE)
   const re = /href="(?:https?:\/\/ja\.wikipedia\.org)?\/wiki\/([^"#?]{2,200})"/g;
   let m;
   while ((m = re.exec(html)) !== null && seen.size < limit) {
@@ -4238,7 +4238,7 @@ async function processBatch(env) {
   ).first();
   if (progress?.status === "completed") return { done: true };
 
-  // Knowledge Graph Cascade: グラフキュー優先（BFS的トポロジー伝播）
+  // Knowledge Graph Cascade : priorité à la file du graphe (propagation topologique de type BFS)
   let graphMode = false;
   const graphCandidates = await popFromGraphQueue(env, BATCH_SIZE);
 
@@ -4259,7 +4259,7 @@ async function processBatch(env) {
     pages     = listJson.query?.allpages ?? [];
     nextToken = listJson.continue?.apcontinue ?? null;
   } else {
-    // グラフキューのタイトルのうちD1に未登録のものだけを処理
+    // Ne traite que les titres de la file du graphe qui ne sont pas encore enregistrés dans D1
     const gcExisting = graphCandidates.length > 0
       ? (await env.DB.prepare(
           `SELECT title FROM articles WHERE title IN (${graphCandidates.map(()=>'?').join(',')})`
@@ -4267,19 +4267,19 @@ async function processBatch(env) {
       : [];
     const gcSet = new Set(gcExisting);
     pages = graphCandidates.filter(t => !gcSet.has(t)).map(t => ({ title: t }));
-    nextToken = progress?.last_continue_token ?? null; // トークンはそのまま保持
+    nextToken = progress?.last_continue_token ?? null; // Conserve le jeton tel quel
     graphMode = true;
   }
 
   if (pages.length === 0) {
-    // 全記事を一巡したらリセットして次のサイクルへ（常に最新HTMLを再取得し続ける）
+    // Une fois tous les articles parcourus, réinitialise et passe au cycle suivant (le dernier HTML est toujours récupéré de nouveau)
     await env.DB.prepare(
       "UPDATE upload_progress SET status='running', last_continue_token='', updated_at=datetime('now') WHERE id=1"
     ).run();
     return { done: false, cycleReset: true };
   }
 
-  // 本家WikipediaのフルページHTMLを並列フェッチ（Vector skinそのまま）
+  // Récupère en parallèle le HTML complet des pages de Wikipédia (skin Vector tel quel)
   const htmlResults = await Promise.all(
     pages.map(async (page) => {
       try {
@@ -4296,7 +4296,7 @@ async function processBatch(env) {
     })
   );
 
-  // 既存CIDを一括取得してre-pin回避（Pinataクォータ節約）
+  // Récupère en une fois les CID existants pour éviter un nouvel épinglage (économise le quota de Pinata)
   const fetchedTitles = htmlResults.filter(Boolean).map(x => x.title);
   const existingRows = fetchedTitles.length > 0
     ? (await env.DB.prepare(
@@ -4305,7 +4305,7 @@ async function processBatch(env) {
     : [];
   const existingCids = new Map(existingRows.map(r => [r.title, r.cid]));
 
-  // processBatchはR2/D1保存のみ。IPFSピンはselfHealが非同期で処理する。
+  // processBatch ne fait qu'enregistrer dans R2/D1. L'épinglage IPFS est traité de façon asynchrone par selfHeal.
   const pairs = [];
   for (const item of htmlResults) {
     if (!item) continue;
@@ -4314,7 +4314,7 @@ async function processBatch(env) {
   }
 
   if (pairs.length > 0) {
-    // HTMLをR2に並列書き込み
+    // Écrit le HTML dans R2 en parallèle
     await Promise.all(
       pairs.map(({ title, html }) =>
         env.HTML_BUCKET.put(title, html, {
@@ -4323,21 +4323,21 @@ async function processBatch(env) {
       )
     );
 
-    // タイトル→CIDをD1に記録
+    // Enregistre dans D1 la correspondance titre → CID
     const stmt = env.DB.prepare(
       `INSERT INTO articles (title, cid, uploaded_at) VALUES (?, ?, datetime('now'))
        ON CONFLICT(title) DO UPDATE SET cid=excluded.cid, uploaded_at=excluded.uploaded_at`
     );
     await env.DB.batch(pairs.map(({ title, cid }) => stmt.bind(title, cid)));
 
-    // R2キャッシュ更新（D1 COUNT(*)スキャンを回避するため）
-    // 新規記事（existingCidsに無い）だけをカウント（再巡回時の二重カウント防止）
+    // Met à jour le cache R2 (pour éviter le balayage COUNT(*) de D1)
+    // Ne compte que les nouveaux articles (absents de existingCids) (évite le double comptage lors d'un nouveau passage)
     const newArticles = pairs.filter(p => !existingCids.has(p.title) || existingCids.get(p.title) === "").length;
     const newIpfs = pairs.filter(p => p.cid && !existingCids.get(p.title)).length;
     if (newArticles > 0 || newIpfs > 0) {
       await updateStatsCache(env, newArticles, newIpfs, pairs.at(-1)?.title ?? "");
     } else {
-      // 再巡回中: last_titleだけ更新
+      // Lors d'un nouveau passage : ne met à jour que last_title
       await updateStatsCache(env, 0, 0, pairs.at(-1)?.title ?? "");
     }
   }
@@ -4348,7 +4348,7 @@ async function processBatch(env) {
      WHERE id=1`
   ).bind(pages.at(-1)?.title ?? "", nextToken ?? "", pairs.length).run();
 
-  // 新規記事のURLをIndexNow / Google Indexing API に送信
+  // Envoie les URL des nouveaux articles à IndexNow / Google Indexing API
   const newTitles = pairs.filter(p => !existingCids.has(p.title) || existingCids.get(p.title) === "").map(p => p.title);
   if (newTitles.length > 0) {
     await Promise.all([
@@ -4357,8 +4357,8 @@ async function processBatch(env) {
     ]);
   }
 
-  // Knowledge Graph Cascade: 保全した記事のリンクをキューに追加（意味的伝播）
-  // ※ awaitが必要 — fire-and-forgetだとWorker終了前にR2書き込みが完了しない
+  // Knowledge Graph Cascade : ajoute à la file les liens des articles préservés (propagation sémantique)
+  // Remarque : await est nécessaire — avec fire-and-forget, l'écriture dans R2 n'est pas terminée avant la fin du Worker
   if (pairs.length > 0) {
     const cascadeLinks = [...new Set(pairs.flatMap(({html}) => extractWikiLinks(html, 6)))];
     await pushToGraphQueue(env, cascadeLinks).catch(() => {});
@@ -4367,7 +4367,7 @@ async function processBatch(env) {
   return { processed: pairs.length, nextToken, graphMode };
 }
 
-// ─── IPFS ゲートウェイフォールバック ──────────────────────────────────────
+// ─── Repli vers les passerelles IPFS ──────────────────────────────────────
 const GATEWAYS = [
   "https://gateway.pinata.cloud/ipfs",
   "https://dweb.link/ipfs",
@@ -4395,7 +4395,7 @@ function json(data, status = 200) {
   });
 }
 
-// ─── Phoenix Quality Score 解説ページ ────────────────────────────────────
+// ─── Page d'explication du Phoenix Quality Score ────────────────────────────────────
 function buildQualityPage() {
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -4518,7 +4518,7 @@ Phoenix Mesh Protocol — wikipedia-is-dead.com<br>
 </html>`;
 }
 
-// ─── Phoenix Network ページ（P2Pネットワークのライブ可視化） ────────────────
+// ─── Page Phoenix Network (visualisation en direct du réseau P2P) ────────────────
 function buildNetworkPage() {
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -4735,8 +4735,8 @@ addLog('Nostrリレーに接続中…', 'violet');
 </html>`;
 }
 
-// ─── Nostr バックフィル: 既存CIDを毎分20件ずつ順次Nostrに配信 ──────────────
-// nostr_batch_offset を __stats.json に保存してcronをまたいで継続する
+// ─── Rattrapage Nostr : diffuse les CID existants vers Nostr, 20 par minute, de façon séquentielle ──────────────
+// Enregistre nostr_batch_offset dans __stats.json pour poursuivre d'un cron à l'autre
 async function nostrBackfill(env) {
   const statsObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
   const stats = statsObj ? JSON.parse(await statsObj.text()) : {};
@@ -4748,7 +4748,7 @@ async function nostrBackfill(env) {
 
   const articles = rows.results || [];
   if (articles.length === 0) {
-    // 末尾まで到達 → オフセットリセット
+    // Fin atteinte → réinitialise le décalage
     stats.nostr_batch_offset = 0;
     await env.HTML_BUCKET.put('__stats.json', JSON.stringify(stats), {
       httpMetadata: { contentType: 'application/json' },
@@ -4764,7 +4764,7 @@ async function nostrBackfill(env) {
     } catch {}
   }
 
-  // オフセットとカウンターをアトミックに更新（レースコンディション回避）
+  // Met à jour le décalage et les compteurs de façon atomique (évite les conditions de concurrence)
   const freshObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
   const fresh = freshObj ? JSON.parse(await freshObj.text()) : {};
   fresh.nostr_batch_offset = batchOffset + articles.length;
@@ -4776,8 +4776,8 @@ async function nostrBackfill(env) {
   return { sent, offset: batchOffset };
 }
 
-// ─── バッチループ: cron1回で複数バッチを連続実行 ──────────────────────────
-// maxMs以内でproccesBatchを繰り返し、スループットを最大化する
+// ─── Boucle de lots : exécute plusieurs lots d'affilée en un seul cron ──────────────────────────
+// Répète processBatch dans la limite de maxMs pour maximiser le débit
 async function runBatchLoop(env, maxMs = 52000) {
   const deadline = Date.now() + maxMs;
   let total = 0, batches = 0;
@@ -4792,20 +4792,20 @@ async function runBatchLoop(env, maxMs = 52000) {
   return { total, batches };
 }
 
-// ─── Worker エクスポート ───────────────────────────────────────────────────
+// ─── Exports du Worker ───────────────────────────────────────────────────
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
       const minute = new Date().getMinutes();
 
-      // ① ミラーリング: 52秒間バッチを連続実行（cron1回あたり最大約8バッチ=200記事）
+      // ① Miroir : exécute des lots en continu pendant 52 secondes (environ 8 lots, soit 200 articles au maximum par cron)
       const batchResult = runBatchLoop(env, 52000);
 
-      // ② Self-Healing + 削除監視 + 複製補充 + RC追従: ミラーリングと並列実行
+      // ② Self-Healing + surveillance des suppressions + ajout de réplicas + suivi des RC : exécutés en parallèle du miroir
       const sideResult = (async () => {
         await selfHeal(env).catch(() => {});           // UNPROCESSED → ANCHORED
-        await replicationHeal(env).catch(() => {});    // ENDANGERED → LOW（毎分）
-        await syncRecentChanges(env).catch(() => {});  // 本家Wikipedia変更追従（毎分）
+        await replicationHeal(env).catch(() => {});    // ENDANGERED → LOW (chaque minute)
+        await syncRecentChanges(env).catch(() => {});  // Suivi des modifications de Wikipédia (chaque minute)
         if (minute % 3 === 0) await watchDeletionLog(env).catch(() => {});
         if (minute % 5 === 0) await watchDeletionProposals(env).catch(() => {});
         if (minute % 10 === 0) {
@@ -4813,7 +4813,7 @@ export default {
             encodeManifestToShards(env).catch(() => {}),
             priorityPin(env).catch(() => {}),
             publishToNostr(env).catch(() => {}),
-            indexNowBulkBatch(env).catch(() => {}),  // 全記事IndexNow一括送信（10分ごと）
+            indexNowBulkBatch(env).catch(() => {}),  // Envoi en masse de tous les articles à IndexNow (toutes les 10 minutes)
           ]);
         }
         if (env.NOSTR_SK) await nostrBackfill(env).catch(() => {});
@@ -4825,12 +4825,12 @@ export default {
   },
 
   async fetch(request, env, ctx) {
-    // リクエスト便乗: ボットの流入をバッチ処理に活用（R2キャッシュで負荷チェック）
+    // Profite des requêtes : exploite le trafic des robots pour le traitement par lots (contrôle de charge via le cache R2)
     if (ctx) ctx.waitUntil((async () => {
       try {
         const ts = await env.HTML_BUCKET.get('__batch-kick-ts').catch(() => null);
         const last = ts ? parseInt(await ts.text()) : 0;
-        if (Date.now() - last > 45000) { // 45秒以上空いていれば実行
+        if (Date.now() - last > 45000) { // Exécute si 45 secondes ou plus se sont écoulées
           await env.HTML_BUCKET.put('__batch-kick-ts', String(Date.now()),
             { httpMetadata: { contentType: 'text/plain' } });
           await processBatch(env);
@@ -4841,50 +4841,50 @@ export default {
     const url = new URL(request.url);
     const { pathname } = url;
 
-    // トップページ（宣言文）
+    // Page d'accueil (déclaration)
     if (pathname === "/") {
       return new Response(await buildHomepage(env), {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
 
-    // ダッシュボード
+    // Tableau de bord
     if (pathname === "/dashboard") {
       return new Response(buildDashboard(), {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
 
-    // マニフェスト
+    // Manifeste
     if (pathname === "/manifesto") {
       return new Response(buildManifesto(), {
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=3600" },
       });
     }
 
-    // 参加者募集ページ
+    // Page de recrutement des participants
     if (pathname === "/join") {
       return new Response(buildJoinPage(), {
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=1800" },
       });
     }
 
-    // /api/p2p-telemetry — ブラウザHeliaの接続状態をサーバーに報告
-    // 目的: P2Pネットワークが実際に機能しているかの実証データを収集する
+    // /api/p2p-telemetry — signale au serveur l'état de connexion de Helia dans le navigateur
+    // Objectif : collecter des données démontrant que le réseau P2P fonctionne réellement
     if (pathname === "/api/p2p-telemetry" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => null);
         const peers = parseInt(body?.peers ?? 0, 10);
-        if (peers > 1000) return json({ ok: true }); // 異常値は無視
+        if (peers > 1000) return json({ ok: true }); // Les valeurs aberrantes sont ignorées
         const statsObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
         if (statsObj) {
           const stats = JSON.parse(await statsObj.text());
-          // p2p_sessions: 過去5分以内に報告されたセッション数（リアルタイム指標）
+          // p2p_sessions : nombre de sessions signalées au cours des 5 dernières minutes (indicateur en temps réel)
           const now = Date.now();
           const sessions = (stats.p2p_sessions || []).filter(s => now - s.ts < 5 * 60 * 1000);
           sessions.push({ ts: now, peers });
-          stats.p2p_sessions = sessions.slice(-500); // 最大500件
-          stats.p2p_active   = sessions.filter(s => s.peers > 0).length; // 実際に接続したノード数
+          stats.p2p_sessions = sessions.slice(-500); // 500 éléments au maximum
+          stats.p2p_active   = sessions.filter(s => s.peers > 0).length; // Nombre de nœuds réellement connectés
           stats.p2p_total_peers = sessions.reduce((s, x) => s + x.peers, 0);
           stats.p2p_max_peers   = Math.max(...sessions.map(x => x.peers), stats.p2p_max_peers || 0);
           await env.HTML_BUCKET.put('__stats.json', JSON.stringify(stats), {
@@ -4897,9 +4897,9 @@ export default {
       }
     }
 
-    // /api/por — Proof of Read シグナル収集
-    // ブラウザがHeliaで記事を取得できたとき、その事実を匿名で報告する
-    // PoR = "読んだ事実の暗号学的証明" の集計レイヤー
+    // /api/por — collecte des signaux de Proof of Read
+    // Lorsque le navigateur parvient à récupérer un article via Helia, ce fait est signalé de façon anonyme
+    // PoR = couche d'agrégation de la « preuve cryptographique d'avoir lu »
     if (pathname === "/api/por" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => null);
@@ -4907,11 +4907,11 @@ export default {
         if (!cid || typeof cid !== 'string' || !/^(bafy|bafk|Qm)[a-zA-Z0-9]{20,}/.test(cid)) {
           return json({ error: 'invalid_cid' }, 400);
         }
-        // per記事 por_count をインクリメント (best-effort)
+        // Incrémente por_count par article (best-effort)
         await env.DB.prepare(
           "UPDATE articles SET por_count = por_count + 1 WHERE cid = ?"
         ).bind(cid).run().catch(() => {});
-        // グローバル total_por もインクリメント
+        // Incrémente aussi total_por global
         const statsObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
         if (statsObj) {
           const stats = JSON.parse(await statsObj.text());
@@ -4927,9 +4927,9 @@ export default {
       }
     }
 
-    // ─── 分散クロール協力者API ────────────────────────────────────────────────
+    // ─── API des contributeurs au crawl distribué ────────────────────────────────────────────────
 
-    // /contribute — 参加方法ランディングページ
+    // /contribute — page d'accueil expliquant comment participer
     if (pathname === "/contribute") {
       const stats = await (async () => {
         try {
@@ -5042,9 +5042,9 @@ done</code></pre>
       }
     }
 
-    // /api/contribute/next?n=10&node_id=XXX — Nostr DHT対応: ノードの担当範囲の未保全記事を返す
-    // node_id指定時: consistent hashingで担当範囲のタイトルのみ返す（分散調整なし）
-    // node_id未指定: 従来のランダム選択
+    // /api/contribute/next?n=10&node_id=XXX — compatible Nostr DHT : renvoie les articles non préservés de la plage du nœud
+    // Avec node_id : ne renvoie que les titres de la plage de responsabilité, par hachage cohérent (sans coordination distribuée)
+    // Sans node_id : sélection aléatoire classique
     if (pathname === "/api/contribute/next") {
       try {
         const n      = Math.min(parseInt(url.searchParams.get("n") ?? "5"), 25);
@@ -5073,7 +5073,7 @@ done</code></pre>
         const apiJson = await apiRes.json();
         let candidates = (apiJson.query?.allpages ?? []).map(p => p.title);
 
-        // node_id指定時: 担当hash範囲でフィルタリング（Consistent Hashing）
+        // Avec node_id : filtre sur la plage de hachage du nœud (hachage cohérent)
         if (nodeId) {
           candidates = candidates.filter(t => {
             const h = titleHashSimple(t);
@@ -5105,7 +5105,7 @@ done</code></pre>
       }
     }
 
-    // /api/contribute/trigger — サーバー側でランダム1バッチ実行（ブラウザ便乗用）
+    // /api/contribute/trigger — exécute côté serveur un lot aléatoire (pour profiter du navigateur)
     if (pathname === "/api/contribute/trigger" && (request.method === "POST" || request.method === "GET")) {
       try {
         const result = await processBatch(env);
@@ -5117,7 +5117,7 @@ done</code></pre>
       }
     }
 
-    // /api/contribute/submit — HTML直接送信（開発者・CLIツール向け）
+    // /api/contribute/submit — envoi direct de HTML (pour les développeurs et les outils CLI)
     if (pathname === "/api/contribute/submit" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => null);
@@ -5143,7 +5143,7 @@ done</code></pre>
       }
     }
 
-    // /api/contribute/submit-batch — 一括送信（最大25件/リクエスト）
+    // /api/contribute/submit-batch — envoi groupé (25 éléments maximum par requête)
     if (pathname === "/api/contribute/submit-batch" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => null);
@@ -5174,7 +5174,7 @@ done</code></pre>
       }
     }
 
-    // /api/diffs/{title} — 記事の変更履歴JSON
+    // /api/diffs/{title} — JSON de l'historique des modifications d'un article
     if (pathname.startsWith("/api/diffs/") && request.method === "GET") {
       const title  = decodeURIComponent(pathname.slice("/api/diffs/".length));
       const limit  = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 200);
@@ -5184,7 +5184,7 @@ done</code></pre>
       return json({ title, diffs: rows.results ?? [] });
     }
 
-    // /wiki/{title}/history — 記事変更履歴ページ
+    // /wiki/{title}/history — page de l'historique des modifications d'un article
     if (pathname.startsWith("/wiki/") && pathname.endsWith("/history")) {
       const rawTitle = decodeURIComponent(pathname.slice(6, -8));
       const rows     = await env.DB.prepare(
@@ -5237,7 +5237,7 @@ done</code></pre>
       return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60' } });
     }
 
-    // /api/sync/status — 同期状態の確認
+    // /api/sync/status — vérification de l'état de synchronisation
     if (pathname === "/api/sync/status") {
       const stateObj = await env.HTML_BUCKET.get('__sync_state.json').catch(() => null);
       const state    = stateObj ? JSON.parse(await stateObj.text()) : {};
@@ -5245,8 +5245,8 @@ done</code></pre>
       return json({ sync_state: state, total_diffs_recorded: count?.n ?? 0 });
     }
 
-    // /bootstrap — 普遍構成子: どこからでもPhoenix Meshノードを再生成できるスクリプト
-    // Von Neumann的自己記述: このエンドポイント自体がネットワークの「遺伝子」
+    // /bootstrap — constructeur universel : script permettant de régénérer un nœud Phoenix Mesh de n'importe où
+    // Auto-description à la Von Neumann : ce point d'accès est lui-même le « gène » du réseau
     if (pathname === "/bootstrap") {
       const script = `#!/usr/bin/env python3
 # Phoenix Mesh Contributor Node — ${GENOME_VERSION}
@@ -5398,8 +5398,8 @@ while True:
       });
     }
 
-    // /api/contribute/proof — Proof of Archive: ノードが保持しているタイトルを申告
-    // por_count をインクリメントし、セルオートマトン状態遷移（ENDANGERED → LOW）を促す
+    // /api/contribute/proof — Proof of Archive : le nœud déclare les titres qu'il détient
+    // Incrémente por_count et favorise la transition d'état de l'automate cellulaire (ENDANGERED → LOW)
     if (pathname === "/api/contribute/proof" && request.method === "POST") {
       try {
         const body = await request.json().catch(() => ({}));
@@ -5408,7 +5408,7 @@ while True:
           : [];
         if (titles.length === 0) return json({ error: "titles[] required" }, 400);
 
-        // バルクで por_count をインクリメント（best-effort、失敗しても無視）
+        // Incrémente por_count en masse (best-effort, échecs ignorés)
         await Promise.allSettled(titles.map(title =>
           env.DB.prepare(
             "UPDATE articles SET por_count = por_count + 1 WHERE title = ? AND cid != '' AND cid IS NOT NULL"
@@ -5428,8 +5428,8 @@ while True:
       }
     }
 
-    // /api/nodes/announce — Nostr DHT: ノードが自身の存在を登録しhash担当範囲を取得
-    // 中央サーバーが落ちても、Nostr上に登録済みの情報でネットワーク継続可能
+    // /api/nodes/announce — Nostr DHT : le nœud enregistre sa propre existence et obtient sa plage de hachage
+    // Même si le serveur central tombe, le réseau peut continuer grâce aux informations déjà enregistrées sur Nostr
     if (pathname === '/api/nodes/announce' && request.method === 'POST') {
       try {
         const body = await request.json().catch(() => ({}));
@@ -5448,7 +5448,7 @@ while True:
         reg.nodes[nodeId].range = range;
 
         await saveNodeRegistry(env, reg);
-        publishNodeToNostr(env, nodeId, range).catch(() => {}); // Nostrへfire-and-forget
+        publishNodeToNostr(env, nodeId, range).catch(() => {}); // Envoi à Nostr en fire-and-forget
 
         const peers = Object.entries(reg.nodes)
           .filter(([id]) => id !== nodeId)
@@ -5458,18 +5458,18 @@ while True:
         return new Response(JSON.stringify({
           ok: true, node_id: nodeId, range,
           active_nodes: Object.keys(reg.nodes).length,
-          peers,                      // ← Nostrが落ちても這えるピアリスト
+          peers,                      // ← Liste de pairs qui reste utilisable même si Nostr tombe
           genome: GENOME_VERSION,
           network: PHOENIX_ORIGIN,
           next_api: `${PHOENIX_ORIGIN}/api/contribute/next?node_id=${nodeId}&n=10`,
-          announce_interval_s: 600,   // 10分ごとに再登録を推奨
+          announce_interval_s: 600,   // Un nouvel enregistrement toutes les 10 minutes est recommandé
         }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
       } catch (e) {
         return json({ error: String(e) }, 500);
       }
     }
 
-    // /api/nodes — アクティブノード一覧（Nostr fallback用）
+    // /api/nodes — liste des nœuds actifs (pour le repli Nostr)
     if (pathname === '/api/nodes') {
       try {
         const reg = await getNodeRegistry(env);
@@ -5488,14 +5488,14 @@ while True:
       }
     }
 
-    // /protocol — Phoenix Mesh プロトコル仕様書
+    // /protocol — spécification du protocole Phoenix Mesh
     if (pathname === "/protocol") {
       return new Response(buildProtocol(), {
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=3600" },
       });
     }
 
-    // /nostr.json — 最新署名済みNostrイベント（検証可能な分散インデックス）
+    // /nostr.json — dernier événement Nostr signé (index distribué vérifiable)
     if (pathname === "/nostr.json") {
       const obj = await env.HTML_BUCKET.get('__nostr-latest.json').catch(() => null);
       if (!obj) return json({ error: 'not_yet_published' }, 404);
@@ -5513,7 +5513,7 @@ while True:
     }
 
     // /.well-known/nostr.json — NIP-05 identity verification
-    // Nostrクライアントで phoenix-mesh@wikipedia-is-dead.com を検索可能にする
+    // Permet de rechercher phoenix-mesh@wikipedia-is-dead.com dans un client Nostr
     if (pathname === "/.well-known/nostr.json") {
       if (!env.NOSTR_SK) return json({ names: {} });
       const pkHex = bytesToHex(schnorr.getPublicKey(hexToBytes(env.NOSTR_SK)));
@@ -5535,14 +5535,14 @@ while True:
       });
     }
 
-    // IndexNow キー検証ファイル: /{key}.txt
+    // Fichier de vérification de la clé IndexNow : /{key}.txt
     if (env.INDEXNOW_KEY && pathname === `/${env.INDEXNOW_KEY}.txt`) {
       return new Response(env.INDEXNOW_KEY, {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=86400" },
       });
     }
 
-    // /quality — Phoenix Quality Score アルゴリズム解説
+    // /quality — explication de l'algorithme du Phoenix Quality Score
     if (pathname === "/quality") {
       return new Response(buildQualityPage(), {
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=3600" },
@@ -5555,7 +5555,7 @@ while True:
       });
     }
 
-    // /api/suggest — Wikipedia opensearch プロキシ（オートコンプリート用）
+    // /api/suggest — proxy opensearch de Wikipédia (pour l'autocomplétion)
     if (pathname === "/api/suggest") {
       const q = url.searchParams.get("q") || "";
       if (!q) return json([]);
@@ -5569,7 +5569,7 @@ while True:
       });
     }
 
-    // /rescued — 削除記事カタログ（知識の墓標・救出記念碑）
+    // /rescued — catalogue des articles supprimés (stèle du savoir, mémorial du sauvetage)
     if (pathname === "/rescued") {
       const page   = Math.max(0, parseInt(url.searchParams.get("p") ?? "0"));
       const PER    = 50;
@@ -5689,7 +5689,7 @@ footer a{color:#6366f1;text-decoration:none}
       });
     }
 
-    // /contributor — Wikipedia編集者プロフィール・貢献履歴インポート
+    // /contributor — profil des éditeurs de Wikipédia et import de l'historique de leurs contributions
     if (pathname === "/contributor" || pathname.startsWith("/contributor/")) {
       const uname = pathname.startsWith("/contributor/")
         ? decodeURIComponent(pathname.slice("/contributor/".length))
@@ -5727,7 +5727,7 @@ button:hover{background:#4f46e5}
 </div></body></html>`, { headers: { "Content-Type": "text/html; charset=utf-8" } });
       }
 
-      // Wikipedia APIから並行取得
+      // Récupération en parallèle depuis l'API de Wikipédia
       const wpA = `https://ja.wikipedia.org/w/api.php`;
       const hdr = { 'User-Agent': 'PhoenixMesh/2.0 (wikipedia-is-dead.com)' };
       const [uRes, cRes, bRes] = await Promise.all([
@@ -5851,7 +5851,7 @@ ${blockW ? `<div style="padding:16px 24px 0">${blockW}</div>` : ''}
       });
     }
 
-    // /index — 全記事五十音・アルファベットインデックス（ハブページ）
+    // /index — index de tous les articles par gojūon et par ordre alphabétique (page hub)
     if (pathname === "/index") {
       const [countRow, kanjiRows] = await Promise.all([
         env.DB.prepare("SELECT COUNT(*) as cnt FROM articles").first(),
@@ -6179,7 +6179,7 @@ footer a{color:#6366f1;text-decoration:none}
       });
     }
 
-    // /index/{char} — 文字別記事一覧（五十音・アルファベット）
+    // /index/{char} — liste des articles par caractère (gojūon et alphabet)
     const indexCharM = pathname.match(/^\/index\/(.+)$/);
     if (indexCharM) {
       const char  = decodeURIComponent(indexCharM[1]).slice(0, 3);
@@ -6308,7 +6308,7 @@ footer a{color:#6366f1;text-decoration:none}
       });
     }
 
-    // /search — 検索結果ページ
+    // /search — page de résultats de recherche
     if (pathname === "/search") {
       const q = url.searchParams.get("q") || "";
       if (!q) return Response.redirect("/", 302);
@@ -6456,7 +6456,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       );
     }
 
-    // /sitemap-index.xml — ページ分割サイトマップのインデックス
+    // /sitemap-index.xml — index des sitemaps paginés
     if (pathname === "/sitemap-index.xml") {
       const countRow = await env.DB.prepare("SELECT COUNT(*) as cnt FROM articles").first();
       const total    = countRow?.cnt ?? 0;
@@ -6473,7 +6473,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       );
     }
 
-    // sitemap.xml（D1から動的生成、最大50,000件）
+    // sitemap.xml (généré dynamiquement depuis D1, 50 000 entrées au maximum)
     if (pathname === "/sitemap.xml") {
       const page   = parseInt(url.searchParams.get("page") ?? "0");
       const limit  = 50000;
@@ -6488,14 +6488,14 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
         `<changefreq>monthly</changefreq><priority>0.8</priority>` +
         `</url>`
       ).join("\n");
-      // 次ページがあればサイトマップインデックスへのリンクを含める
+      // S'il y a une page suivante, inclut le lien vers l'index des sitemaps
       const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>`;
       return new Response(xml, {
         headers: { "Content-Type": "application/xml", "Cache-Control": "public, max-age=3600" },
       });
     }
 
-    // Service Worker スクリプト
+    // Script du Service Worker
     if (pathname === "/sw.js") {
       return new Response(SW_SCRIPT, {
         headers: {
@@ -6506,14 +6506,14 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       });
     }
 
-    // /stats — R2キャッシュ優先（D1 COUNT(*)スキャンを完全回避）
+    // /stats — priorité au cache R2 (évite totalement le balayage COUNT(*) de D1)
     if (pathname === "/stats") {
       try {
-        // R2から集計キャッシュ取得（row read ゼロ）
+        // Récupère le cache d'agrégation depuis R2 (zéro lecture de ligne)
         const cached = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
         const cache  = cached ? JSON.parse(await cached.text()) : null;
 
-        // upload_progress からステータスのみ取得（1行だけ読む）
+        // Ne récupère que le statut depuis upload_progress (une seule ligne lue)
         const progress = await env.DB.prepare(
           "SELECT status, last_title, updated_at, total_count FROM upload_progress WHERE id=1"
         ).first().catch(() => null);
@@ -6543,7 +6543,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       }
     }
 
-    // /cid/{記事名}
+    // /cid/{nom de l'article}
     if (pathname.startsWith("/cid/")) {
       const title = decodeURIComponent(pathname.slice(5));
       const row = await env.DB.prepare("SELECT cid FROM articles WHERE title=?").bind(title).first();
@@ -6557,7 +6557,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       return json(await processBatch(env));
     }
 
-    // /admin/reindex ── 既存記事をフルページHTMLで再取得（20件ずつ）
+    // /admin/reindex — récupère de nouveau les articles existants en HTML de page complète (20 à la fois)
     if (pathname === "/admin/reindex") {
       if (request.method !== "POST") return json({ error: "POST only" }, 405);
       const rows = await env.DB.prepare(
@@ -6587,7 +6587,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       return json({ reindexed: done });
     }
 
-    // /admin/migrate-to-r2 ── 旧D1 HTMLをR2に移行
+    // /admin/migrate-to-r2 — migre vers R2 l'ancien HTML stocké dans D1
     if (pathname === "/admin/migrate-to-r2") {
       if (request.method !== "POST") return json({ error: "POST only" }, 405);
       const rows = await env.DB.prepare(
@@ -6604,7 +6604,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       return json({ migrated, remaining: (rows.results?.length ?? 0) === 50 ? "more" : "done" });
     }
 
-    // /admin/ec-encode ── Erasure Coding: マニフェストをエンコードしてR2に保存
+    // /admin/ec-encode — Erasure Coding : encode le manifeste et l'enregistre dans R2
     if (pathname === "/admin/ec-encode") {
       if (request.method !== "POST") return json({ error: "POST only" }, 405);
       try {
@@ -6615,7 +6615,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       }
     }
 
-    // /admin/ec-status ── Erasure Coding: シャード健全性チェック + 自動修復
+    // /admin/ec-status — Erasure Coding : contrôle de l'intégrité des fragments + réparation automatique
     if (pathname === "/admin/ec-status") {
       try {
         const result = await verifyOrReconstructShards(env);
@@ -6625,18 +6625,18 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       }
     }
 
-    // /admin/ec-decode ── AES-256-GCM + SSS: マニフェストを復号して検証
+    // /admin/ec-decode — AES-256-GCM + SSS : déchiffre le manifeste et le vérifie
     if (pathname === "/admin/ec-decode") {
       await loadErasure();
 
-      // 暗号化マニフェスト取得（IV 12B || ciphertext）
+      // Récupère le manifeste chiffré (IV 12 octets || ciphertext)
       const encObj = await env.HTML_BUCKET.get('__ec-manifest.enc');
       if (!encObj) return json({ error: 'no_manifest' }, 404);
       const encPacked = new Uint8Array(await encObj.arrayBuffer());
       const iv = encPacked.slice(0, 12);
       const ciphertext = encPacked.slice(12);
 
-      // 利用可能な3シェアを収集（x座標 = index + 1）
+      // Rassemble les 3 parts disponibles (coordonnée x = index + 1)
       const shares = [], xValues = [];
       for (let i = 0; i < EC_SHARD_COUNT && shares.length < 3; i++) {
         const obj = await env.HTML_BUCKET.get(`__ec-keyshare-${i}.bin`);
@@ -6658,7 +6658,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       }
     }
 
-    // /admin/bootstrap-check — libp2pブートストラップノードの到達確認
+    // /admin/bootstrap-check — vérifie l'accessibilité des nœuds d'amorçage libp2p
     if (pathname === "/admin/bootstrap-check") {
       const BOOTSTRAP_HOSTS = [
         'https://ny5.bootstrap.libp2p.io',
@@ -6683,14 +6683,14 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       return json(results.map(r => r.value ?? r.reason));
     }
 
-    // /admin/heal ── 手動Self-Healing実行
+    // /admin/heal — exécution manuelle de l'auto-réparation
     if (pathname === "/admin/heal") {
       if (request.method !== "POST") return json({ error: "POST only" }, 405);
       const result = await selfHeal(env);
       return json(result);
     }
 
-    // /admin/pin-title?title=XXX ── 特定記事を即座にIPFS固定
+    // /admin/pin-title?title=XXX — épingle immédiatement un article précis sur IPFS
     if (pathname === "/admin/pin-title") {
       if (request.method !== "POST") return json({ error: "POST only" }, 405);
       const title = url.searchParams.get("title");
@@ -6711,7 +6711,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       return json(result);
     }
 
-    // /admin/nostr-batch: 既存CIDをNostrに一括配信 (limit=N, offset=N)
+    // /admin/nostr-batch : diffuse en masse les CID existants vers Nostr (limit=N, offset=N)
     if (pathname === "/admin/nostr-batch") {
       if (request.method !== "POST") return json({ error: "POST only" }, 405);
       const body    = await request.json().catch(() => ({}));
@@ -6726,7 +6726,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
         await publishArticleToNostr(env, title, cid).catch(() => {});
         published++;
       }
-      // オフセットと記事数を stats.json に反映
+      // Reporte le décalage et le nombre d'articles dans stats.json
       const sObj = await env.HTML_BUCKET.get('__stats.json').catch(() => null);
       const s = sObj ? JSON.parse(await sObj.text()) : {};
       s.nostr_batch_offset = offset + published;
@@ -6737,7 +6737,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       return json({ published, offset, limit, next_offset: offset + limit });
     }
 
-    // /images/:filename ── 静的画像配信
+    // /images/:filename — diffusion d'images statiques
     if (pathname.startsWith('/images/')) {
       const imgKey = `__images/${pathname.slice(8)}`;
       const imgObj = await env.HTML_BUCKET.get(imgKey);
@@ -6750,7 +6750,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       return new Response('Not Found', { status: 404 });
     }
 
-    // /wiki/{記事名}/history ── 版履歴ページ配信
+    // /wiki/{nom de l'article}/history — diffusion de la page d'historique des versions
     const histM = pathname.match(/^\/wiki\/(.+?)\/history$/);
     if (histM) {
       const histTitle = decodeURIComponent(histM[1]);
@@ -6767,12 +6767,12 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       );
     }
 
-    // /wiki/{記事名} ── 記事配信
+    // /wiki/{nom de l'article} — diffusion de l'article
     const m = pathname.match(/^\/wiki\/(.+)$/);
     if (!m) return new Response("Not Found", { status: 404 });
     const title = decodeURIComponent(m[1]);
 
-    // 1. R2を最初に確認（D1クエリを完全スキップ → 行読み取り節約）
+    // 1. Vérifier R2 en premier (saute complètement la requête D1 → économise les lectures de lignes)
     const r2obj = await env.HTML_BUCKET.get(title);
     if (r2obj) {
       const html = await r2obj.text();
@@ -6795,7 +6795,7 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       });
     }
 
-    // 2. R2ミス時のみD1にフォールバック
+    // 2. Repli sur D1 uniquement en cas d'échec dans R2
     const row = await env.DB.prepare(
       "SELECT cid, html, por_count, uploaded_at, wiki_last_modified FROM articles WHERE title=?"
     ).bind(title).first();
@@ -6822,13 +6822,13 @@ Sitemap: https://wikipedia-is-dead.com/sitemap.xml
       "X-Robots-Tag": "index, follow",
     };
 
-    // 3. D1レガシーHTMLから配信
+    // 3. Diffusion depuis l'ancien HTML stocké dans D1
     if (d1Html) {
       const body = injectP2P(d1Html, title, cid, porCount, uploadedAt, wikiLastModified);
       return new Response(body, { headers: { ...baseHeaders, "X-Served-By": "d1-legacy" } });
     }
 
-    // 4. IPFSゲートウェイフォールバック
+    // 4. Repli vers les passerelles IPFS
     if (cid) {
       const ipfsRes = await fetchFromIPFS(cid);
       if (ipfsRes) {

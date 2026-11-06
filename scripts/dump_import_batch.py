@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Phoenix Mesh — Wikipedia Enterprise HTML Dump バッチインポーター v3
-- 25件/リクエストのバッチ送信で高速化
-- ストリーム処理（メモリ ~100MB以下）
-- 切断時自動再接続（最大10回）
+Phoenix Mesh — Importeur par lots du dump HTML Wikipédia Enterprise v3
+- Envoi par lots de 25 éléments par requête pour accélérer le traitement
+- Traitement en flux (moins d'environ 100 Mo de mémoire)
+- Reconnexion automatique en cas de coupure (10 fois au maximum)
 """
 
 import urllib.request
@@ -14,19 +14,19 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# ── 設定 ──────────────────────────────────────────────────────────────────────
+# ── Configuration ──────────────────────────────────────────────────────────────────────
 DUMP_URL      = "https://dumps.wikimedia.org/other/enterprise_html/runs/20250320/jawiki-NS0-20250320-ENTERPRISE-HTML.json.tar.gz"
 SUBMIT_URL    = "https://wikipedia-is-dead.com/api/contribute/submit"
 BATCH_URL     = "https://wikipedia-is-dead.com/api/contribute/submit-batch"
 EXISTING      = "/tmp/existing_titles.txt"
 DONE_FILE     = "/tmp/phoenix_done_this_run.txt"
-WORKERS       = 16       # 並列バッチ数
-BATCH_SIZE    = 25       # 1リクエストあたりの記事数
+WORKERS       = 16       # Nombre de lots en parallèle
+BATCH_SIZE    = 25       # Nombre d'articles par requête
 LOG_EVERY     = 500
 RETRY_UP      = 3
 MAX_RECONN    = 10
 
-# ── 統計 ──────────────────────────────────────────────────────────────────────
+# ── Statistiques ──────────────────────────────────────────────────────────────────────
 _lock     = threading.Lock()
 _uploaded = 0
 _skipped  = 0
@@ -52,12 +52,12 @@ def _progress(force=False):
     bar_w   = 30
     bar     = "█" * int(bar_w * pct) + "░" * (bar_w - int(bar_w * pct))
     print(
-        f"\r[{bar}] {_uploaded:>8,}件UP | skip:{_skipped:,} fail:{_failed:,} | "
-        f"{rate:.0f}件/s | ETA:{eta_h:.1f}h",
+        f"\r[{bar}] {_uploaded:>8,}élém. envoyés | skip:{_skipped:,} fail:{_failed:,} | "
+        f"{rate:.0f} élém./s | ETA:{eta_h:.1f}h",
         end="", flush=True
     )
 
-# ── 既存タイトル読み込み ───────────────────────────────────────────────────────
+# ── Lecture des titres existants ───────────────────────────────────────────────────────
 def load_existing():
     titles = set()
     for path in (EXISTING, DONE_FILE):
@@ -65,13 +65,13 @@ def load_existing():
             with open(path) as f:
                 before = len(titles)
                 titles.update(l.strip() for l in f if l.strip())
-                print(f"  {path}: {len(titles)-before:,}件")
+                print(f"  {path}: {len(titles)-before:,} titres")
         except FileNotFoundError:
             pass
-    print(f"  → 合計スキップ対象: {len(titles):,}件\n")
+    print(f"  → Total à ignorer : {len(titles):,} titres\n")
     return titles
 
-# ── バッチアップロード ─────────────────────────────────────────────────────────
+# ── Envoi par lots ─────────────────────────────────────────────────────────
 def upload_batch(articles):
     """articles: list of {"title": str, "html": str}"""
     data = json.dumps({"articles": articles}).encode()
@@ -108,7 +108,7 @@ def upload_single(title, html):
                 time.sleep(1.5 ** attempt)
     return False
 
-# ── バッチ処理 ─────────────────────────────────────────────────────────────────
+# ── Traitement par lots ─────────────────────────────────────────────────────────────────
 def process_batch(articles, done_fh):
     """articles: list of (title, html) tuples from the stream"""
     payload = [{"title": t, "html": h} for t, h in articles]
@@ -122,7 +122,7 @@ def process_batch(articles, done_fh):
         if processed < len(articles):
             _inc("fa", len(articles) - processed)
     else:
-        # フォールバック: 個別送信
+        # Repli : envoi individuel
         for title, html in articles:
             if upload_single(title, html):
                 with _lock:
@@ -133,7 +133,7 @@ def process_batch(articles, done_fh):
                 _inc("fa")
     return processed
 
-# ── ストリーム処理（1回分）────────────────────────────────────────────────────
+# ── Traitement en flux (un passage) ────────────────────────────────────────────────────
 def stream_once(existing, done_fh):
     req = urllib.request.Request(
         DUMP_URL,
@@ -146,11 +146,11 @@ def stream_once(existing, done_fh):
                 if not fobj:
                     continue
                 size_mb = member.size / 1024 / 1024
-                print(f"\n内部ファイル: {member.name}  ({size_mb:,.0f} MB展開後)")
+                print(f"\nFichier interne : {member.name}  ({size_mb:,.0f} Mo après décompression)")
 
                 with ThreadPoolExecutor(max_workers=WORKERS) as ex:
                     futures = {}
-                    pending = []   # (title, html) を貯める
+                    pending = []   # Accumule les paires (title, html)
 
                     def flush_pending(buf):
                         for i in range(0, len(buf), BATCH_SIZE):
@@ -199,13 +199,13 @@ def stream_once(existing, done_fh):
 
     return True
 
-# ── メイン ────────────────────────────────────────────────────────────────────
+# ── Programme principal ────────────────────────────────────────────────────────────────────
 def main():
     print("=" * 60)
     print(" Phoenix Mesh — Wikipedia Dump Importer v3 (Batch)")
     print("=" * 60)
-    print(f"  送信先: {BATCH_URL}")
-    print(f"  並列数: {WORKERS} threads × {BATCH_SIZE}件/batch\n")
+    print(f"  Destination : {BATCH_URL}")
+    print(f"  Parallélisme : {WORKERS} threads × {BATCH_SIZE} éléments/lot\n")
 
     existing = load_existing()
     done_fh  = open(DONE_FILE, "a", buffering=1)
@@ -213,22 +213,22 @@ def main():
     for attempt in range(1, MAX_RECONN + 1):
         if attempt > 1:
             wait = min(30 * attempt, 180)
-            print(f"\n再接続 {attempt}/{MAX_RECONN}... {wait}秒待機")
+            print(f"\nReconnexion {attempt}/{MAX_RECONN}... attente de {wait} s")
             time.sleep(wait)
             existing = load_existing()
 
-        print(f"ストリームDL開始 (試行 {attempt}/{MAX_RECONN})")
+        print(f"Début du téléchargement en flux (essai {attempt}/{MAX_RECONN})")
         try:
             stream_once(existing, done_fh)
-            print("\n全ファイル正常完了！")
+            print("\nTous les fichiers ont été traités normalement !")
             break
         except KeyboardInterrupt:
-            print("\n中断しました。")
+            print("\nInterrompu.")
             break
         except tarfile.ReadError as e:
-            print(f"\n切断: {e} → 自動再接続")
+            print(f"\nCoupure : {e} → reconnexion automatique")
         except Exception as e:
-            print(f"\nエラー: {e} → 自動再接続")
+            print(f"\nErreur : {e} → reconnexion automatique")
 
     done_fh.close()
     _progress(force=True)
@@ -236,13 +236,13 @@ def main():
     print(f"""
 
 {'=' * 60}
- 完了レポート
+ Rapport final
 {'=' * 60}
-  アップロード: {_uploaded:,} 件
-  スキップ    : {_skipped:,} 件（既存 or 空）
-  失敗        : {_failed:,} 件
-  所要時間    : {elapsed/3600:.2f} 時間
-  平均速度    : {_uploaded/elapsed:.0f} 件/秒
+  Envoyés     : {_uploaded:,}
+  Ignorés     : {_skipped:,} (déjà présents ou vides)
+  Échecs      : {_failed:,}
+  Durée       : {elapsed/3600:.2f} h
+  Débit moyen : {_uploaded/elapsed:.0f} élém./s
 {'=' * 60}
 """)
 

@@ -1,64 +1,64 @@
-# P2P参加機能 実装ロードマップ
+# Feuille de route : fonctions de participation P2P
 
-閲覧者自身がピン固定に寄与できるP2P対応の実装計画。
-
----
-
-## Tier 1 — UIで参加を促す
-
-閲覧者がワンクリックでピン留めできるボタンをページに追加する。
-
-**実装内容:**
-- 各記事ページの下部に CID 表示 + コピーボタン（現在は小テキストで表示済み）
-- 「このページをIPFSにピン留めする」ボタン → Pinata の pinByHash API を呼び出す
-- IPFS ノード利用者向けに `ipfs pin add <CID>` コマンドをワンクリックコピー
-
-**難易度:** 低  
-**必要なもの:** Worker の HTML 注入部分を更新するだけ
+Plan de mise en œuvre d'un mode P2P permettant aux visiteurs eux-mêmes de contribuer à l'épinglage.
 
 ---
 
-## Tier 2 — Service Worker で自動キャッシュ
+## Niveau 1 — Inciter à participer par l'interface
 
-閲覧したページをブラウザが自動的にキャッシュし、次の訪問者へ再配信する。
+Ajouter à la page un bouton permettant au visiteur d'épingler en un clic.
 
-**実装内容:**
-- `sw.js` Service Worker をページ訪問時に自動インストール
-- 訪問した記事の CID と HTML を `Cache API` に保存
-- 次回アクセス時はサーバーを経由せずブラウザキャッシュから返す
-- 訪問済み CID のリストを `IndexedDB` で管理
+**Contenu de la mise en œuvre :**
+- En bas de chaque page d'article, afficher le CID avec un bouton de copie (déjà affiché en petit texte actuellement)
+- Bouton « Épingler cette page sur IPFS » → appelle l'API pinByHash de Pinata
+- Pour les utilisateurs d'un nœud IPFS, copier en un clic la commande `ipfs pin add <CID>`
 
-**難易度:** 中  
-**効果:** サーバー負荷軽減 + 閲覧者がキャッシュノードとして機能
+**Difficulté :** faible  
+**Nécessaire :** il suffit de mettre à jour la partie du Worker qui injecte le HTML
 
 ---
 
-## Tier 3 — Helia でブラウザを本物の IPFS ノード化（真のP2P）
+## Niveau 2 — Mise en cache automatique par un Service Worker
 
-閲覧者のブラウザ自体が IPFS ノードになり、WebRTC で他のブラウザと直接接続する。
+Le navigateur met automatiquement en cache les pages consultées et les redistribue aux visiteurs suivants.
 
-**実装内容:**
-- `@helia/verified-fetch` + WebRTC Transport をバンドル
-- Service Worker 内で Helia ノードを起動
-- 記事取得を IPFS DHT 経由の P2P で行う（ゲートウェイ不要）
-- 閲覧するだけで自動的にセーダーになり、同じ記事を見た人同士で配信し合う
-- CID の検証（ハッシュ照合）により改ざん検出が自動化される
+**Contenu de la mise en œuvre :**
+- Installer automatiquement le Service Worker `sw.js` à la visite de la page
+- Enregistrer dans le `Cache API` le CID et le HTML des articles visités
+- Lors de l'accès suivant, répondre depuis le cache du navigateur sans passer par le serveur
+- Gérer la liste des CID visités avec `IndexedDB`
 
-**難易度:** 高  
-**必要なもの:** Helia バンドル（`@helia/unixfs`, `@libp2p/webrtc` 等）、ビルドパイプライン
+**Difficulté :** moyenne  
+**Effet :** allègement de la charge du serveur + le visiteur joue le rôle de nœud de cache
 
-**参考ライブラリ:**
+---
+
+## Niveau 3 — Transformer le navigateur en véritable nœud IPFS avec Helia (vrai P2P)
+
+Le navigateur du visiteur devient lui-même un nœud IPFS et se connecte directement aux autres navigateurs par WebRTC.
+
+**Contenu de la mise en œuvre :**
+- Intégrer `@helia/verified-fetch` + le transport WebRTC dans le bundle
+- Démarrer un nœud Helia dans le Service Worker
+- Récupérer les articles en P2P via la DHT d'IPFS (sans passerelle)
+- Le simple fait de consulter fait automatiquement du visiteur un « seeder » : ceux qui ont vu le même article se le distribuent entre eux
+- La vérification des CID (comparaison des hachages) automatise la détection des altérations
+
+**Difficulté :** élevée  
+**Nécessaire :** un bundle Helia (`@helia/unixfs`, `@libp2p/webrtc`, etc.) et une chaîne de build
+
+**Bibliothèques de référence :**
 - https://github.com/ipfs/helia
 - `@helia/verified-fetch`
 - `@libp2p/webrtc`
 
 ---
 
-## 実装順序
+## Ordre de mise en œuvre
 
 ```
-Tier 1（UIボタン）→ Tier 2（Service Worker）→ Tier 3（Helia P2P）
+Niveau 1 (bouton dans l'interface) → Niveau 2 (Service Worker) → Niveau 3 (Helia P2P)
 ```
 
-Tier 1 と 2 は Cloudflare Worker の HTML 注入で完結する。  
-Tier 3 は別途ビルドパイプラインが必要になる。
+Les niveaux 1 et 2 se réalisent entièrement par l'injection de HTML dans le Cloudflare Worker.  
+Le niveau 3 exige une chaîne de build distincte.

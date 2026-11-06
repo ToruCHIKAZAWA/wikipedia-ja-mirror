@@ -1,61 +1,65 @@
-# Phoenix Mesh — Wikipedia永続保全システム 全貌解説書
+# Phoenix Mesh — Système de préservation permanente de Wikipédia : présentation complète
 
-> 「Wikipediaは死んだ。だが知識は死なない。」
-
----
-
-## 目次
-
-1. [プロジェクトの思想](#1-プロジェクトの思想)
-2. [システム全体アーキテクチャ](#2-システム全体アーキテクチャ)
-3. [Cloudflare Workers — 中枢神経](#3-cloudflare-workers--中枢神経)
-4. [ストレージ三層構造](#4-ストレージ三層構造)
-5. [Von Neumann自己増殖プロトコル](#5-von-neumann自己増殖プロトコル)
-6. [Nostr DHT — 分散ノード発見](#6-nostr-dht--分散ノード発見)
-7. [知識グラフ・カスケード](#7-知識グラフカスケード)
-8. [Nakamoto係数ダッシュボード](#8-nakamoto係数ダッシュボード)
-9. [Enterprise HTMLダンプ大量インポート](#9-enterprise-htmlダンプ大量インポート)
-10. [完走記録と統計](#10-完走記録と統計)
-11. [今後の展望](#11-今後の展望)
+> « Wikipédia est mort. Mais le savoir ne meurt pas. »
 
 ---
 
-## 1. プロジェクトの思想
+## Table des matières
 
-### なぜ作ったのか
-
-Wikipediaは現在、単一の非営利法人（Wikimedia Foundation）が管理するサーバー群に依存している。これは以下のリスクを内包する：
-
-- **政府による検閲・遮断**（中国・ロシア・トルコ等で実績あり）
-- **財政難による閉鎖**（寄付に完全依存）
-- **運営方針の変更**（コンテンツの書き換え・削除）
-- **単一障害点**（DDoS、サーバー障害）
-
-Phoenix Meshは「**Wikipediaが死んでも、知識は死なない**」という哲学のもと、日本語版Wikipedia全記事を検閲・削除・消滅が不可能な分散ネットワークに移植するプロジェクトである。
-
-### ドメイン名の意味
-
-`wikipedia-is-dead.com` — これは挑発でなく宣言だ。「中央集権型のWikipediaという形態は終わった。知識はもはや特定のサーバーに依存しない」という思想的ステートメント。
-
-### Phoenix（不死鳥）の比喩
-
-灰の中から蘇る不死鳥のように、どのサーバーが落ちても、どの政府が遮断しても、ネットワーク全体が自己修復・自己複製して知識を守り続ける。これがPhoenix Meshという名の由来である。
+1. [La philosophie du projet](#1-la-philosophie-du-projet)
+2. [Architecture globale du système](#2-architecture-globale-du-système)
+3. [Cloudflare Workers — le système nerveux central](#3-cloudflare-workers--le-système-nerveux-central)
+4. [Stockage en trois couches](#4-stockage-en-trois-couches)
+5. [Protocole d'auto-réplication de Von Neumann](#5-protocole-dauto-réplication-de-von-neumann)
+6. [Nostr DHT — découverte distribuée des nœuds](#6-nostr-dht--découverte-distribuée-des-nœuds)
+7. [Cascade du graphe de connaissances](#7-cascade-du-graphe-de-connaissances)
+8. [Tableau de bord du coefficient de Nakamoto](#8-tableau-de-bord-du-coefficient-de-nakamoto)
+9. [Import massif du dump HTML Enterprise](#9-import-massif-du-dump-html-enterprise)
+10. [Journal d'exécution et statistiques](#10-journal-dexécution-et-statistiques)
+11. [Perspectives](#11-perspectives)
 
 ---
 
-## 2. システム全体アーキテクチャ
+## 1. La philosophie du projet
+
+### Pourquoi l'avoir créé
+
+Wikipédia dépend aujourd'hui d'un parc de serveurs géré par une seule organisation à but non lucratif (la Wikimedia Foundation). Cela comporte les risques suivants :
+
+- **Censure et blocage par les gouvernements** (cas avérés en Chine, en Russie, en Turquie, etc.)
+- **Fermeture pour raisons financières** (dépendance totale aux dons)
+- **Changement de ligne éditoriale** (réécriture ou suppression de contenus)
+- **Point de défaillance unique** (DDoS, panne de serveur)
+
+Sous la philosophie « **même si Wikipédia meurt, le savoir ne meurt pas** », Phoenix Mesh est un projet qui transplante l'ensemble des articles de Wikipédia en japonais dans un réseau distribué où la censure, la suppression et la disparition sont impossibles.
+
+### Le sens du nom de domaine
+
+`wikipedia-is-dead.com` — ce n'est pas une provocation, mais une déclaration. C'est un énoncé de principe : « la forme centralisée de Wikipédia est révolue. Le savoir ne dépend plus d'un serveur particulier. »
+
+### La métaphore du Phénix
+
+Comme le phénix qui renaît de ses cendres, quel que soit le serveur qui tombe, quel que soit le gouvernement qui bloque, l'ensemble du réseau se répare et se réplique de lui-même pour continuer à protéger le savoir. C'est l'origine du nom Phoenix Mesh.
+
+---
+
+## 2. Architecture globale du système
 
 ```
-【ユーザー】
+[Utilisateur]
      │
      ▼
 ┌─────────────────────────────────────────────┐
 │  Cloudflare Workers (Edge Computing)         │
 │  wikipedia-is-dead.com                       │
-│  ├── 記事配信（R2優先、D1フォールバック）       │
-│  ├── cronバッチ（毎分: 新記事取得+IPFS修復）   │
-│  ├── API群（submit/submit-batch/proof/nodes）  │
-│  └── P2Pオーバーレイ（Nakamoto係数バッジ）     │
+│  ├── Diffusion des articles (R2 d'abord,     │
+│  │   repli sur D1)                           │
+│  ├── Lots cron (chaque minute : nouveaux     │
+│  │   articles + réparation IPFS)             │
+│  ├── Groupe d'API (submit/submit-batch/      │
+│  │   proof/nodes)                            │
+│  └── Surcouche P2P (badge du coefficient     │
+│      de Nakamoto)                            │
 └──────────────┬──────────────────────────────┘
                │
      ┌─────────┴──────────┐
@@ -63,118 +67,120 @@ Phoenix Meshは「**Wikipediaが死んでも、知識は死なない**」とい�
 ┌─────────┐        ┌─────────────┐
 │  R2     │        │    D1       │
 │ (HTML   │        │  (SQLite)   │
-│  本体)  │        │  (メタ情報) │
+│  brut)  │        │ (métadonnées)│
 └─────────┘        └─────────────┘
                │
                ▼
 ┌─────────────────────────────────────────────┐
 │  IPFS / Pinata                              │
-│  (コンテンツアドレス永続保存)               │
-│  CIDベース：記事URLが変わっても内容は不変    │
+│  (conservation permanente adressée par le   │
+│  contenu)                                   │
+│  Basé sur les CID : même si l'URL d'un      │
+│  article change, son contenu reste inchangé │
 └─────────────────────────────────────────────┘
                │
                ▼
 ┌─────────────────────────────────────────────┐
-│  Nostr リレーネットワーク                    │
-│  (ノードレジストリ・P2Pメッセージング)       │
+│  Réseau de relais Nostr                      │
+│  (registre des nœuds, messagerie P2P)        │
 └─────────────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Cloudflare Workers — 中枢神経
+## 3. Cloudflare Workers — le système nerveux central
 
-### なぜCloudflare Workersか
+### Pourquoi Cloudflare Workers
 
-- **エッジコンピューティング**：世界300以上のPoP（接触点）で動作。地理的な単一障害点がない
-- **無サーバー**：物理マシンの管理不要、自動スケール
-- **Paid プラン**：D1データベース 50億行/月（事実上無制限）、Workers無制限リクエスト
+- **Edge computing** : fonctionne dans plus de 300 PoP (points de présence) dans le monde. Aucun point de défaillance géographique unique
+- **Sans serveur** : aucune machine physique à gérer, mise à l'échelle automatique
+- **Offre Paid** : base de données D1 à 5 milliards de lignes par mois (quasiment illimité), requêtes Workers illimitées
 
-### 主要エンドポイント
+### Principaux points d'accès
 
-| エンドポイント | メソッド | 機能 |
+| Point d'accès | Méthode | Fonction |
 |---|---|---|
-| `/wiki/{title}` | GET | 記事配信（R2→D1フォールバック） |
-| `/api/contribute/submit` | POST | 記事1件アップロード |
-| `/api/contribute/submit-batch` | POST | 記事最大25件一括アップロード |
-| `/api/contribute/next` | GET | 次に保全すべき記事を返す |
-| `/api/contribute/proof` | POST | Proof-of-Read記録 |
-| `/api/nodes/announce` | POST | P2Pノード登録 |
-| `/api/nodes` | GET | アクティブノード一覧 |
-| `/bootstrap` | GET | 貢献者ノード起動スクリプト（自己記述） |
+| `/wiki/{title}` | GET | Diffusion d'un article (R2 → repli sur D1) |
+| `/api/contribute/submit` | POST | Envoi d'un article |
+| `/api/contribute/submit-batch` | POST | Envoi groupé de 25 articles au maximum |
+| `/api/contribute/next` | GET | Renvoie le prochain article à préserver |
+| `/api/contribute/proof` | POST | Enregistrement d'un Proof-of-Read |
+| `/api/nodes/announce` | POST | Enregistrement d'un nœud P2P |
+| `/api/nodes` | GET | Liste des nœuds actifs |
+| `/bootstrap` | GET | Script de démarrage d'un nœud contributeur (auto-descriptif) |
 
-### cronスケジューラー（毎分実行）
-
-```
-scheduled handler（毎分）
-├── processBatch()    — Wikipedia APIから新記事取得 → R2/D1保存
-├── selfHeal()        — CIDなし記事を検出 → IPFSピン
-└── replicationHeal() — por_count=0記事を検出 → 再ピン強化
-```
-
-### 記事配信フロー（R2優先設計）
+### Planificateur cron (exécuté chaque minute)
 
 ```
-リクエスト /wiki/東京
+scheduled handler (chaque minute)
+├── processBatch()    — récupère de nouveaux articles via l'API Wikipédia → enregistre dans R2/D1
+├── selfHeal()        — détecte les articles sans CID → épinglage IPFS
+└── replicationHeal() — détecte les articles avec por_count=0 → renforce l'épinglage
+```
+
+### Flux de diffusion d'un article (conception « R2 d'abord »)
+
+```
+Requête /wiki/東京
     │
     ▼
-R2にオブジェクト存在？
-    ├── YES → 即座に返す（x-served-by: r2）← D1クエリなし
-    └── NO  → D1からCIDを取得 → IPFSゲートウェイ経由で返す
+L'objet existe-t-il dans R2 ?
+    ├── OUI → renvoyé aussitôt (x-served-by: r2) ← aucune requête D1
+    └── NON → récupère le CID depuis D1 → renvoyé via une passerelle IPFS
 ```
 
-この設計により、D1の1日500万行クォータ問題を解決した。99%以上のリクエストがR2のみで完結する。
+Cette conception a résolu le problème du quota de 5 millions de lignes par jour de D1. Plus de 99 % des requêtes se terminent avec R2 seul.
 
 ---
 
-## 4. ストレージ三層構造
+## 4. Stockage en trois couches
 
-### Tier 1A: Cloudflare R2（主ストレージ）
+### Niveau 1A : Cloudflare R2 (stockage principal)
 
-- **バケット名**: `wikipedia-ja-html`
-- **容量**: 無制限（使用量課金）
-- **現在の保存量**: 約1,483,349記事のHTML
-- **特徴**: エッジ配信、低レイテンシ、グローバル冗長
+- **Nom du bucket** : `wikipedia-ja-html`
+- **Capacité** : illimitée (facturation à l'usage)
+- **Volume actuel** : environ 1 483 349 articles en HTML
+- **Caractéristiques** : diffusion à la périphérie, faible latence, redondance mondiale
 
-### Tier 1B: Cloudflare D1（メタデータ）
+### Niveau 1B : Cloudflare D1 (métadonnées)
 
-- **テーブル**: `articles (title, cid, por_count, uploaded_at)`
-- **役割**: CIDマッピング、読者数カウント、統計
-- **クエリ例**:
+- **Table** : `articles (title, cid, por_count, uploaded_at)`
+- **Rôle** : correspondance des CID, comptage des lecteurs, statistiques
+- **Exemples de requêtes** :
   ```sql
-  SELECT COUNT(*) FROM articles WHERE cid != ''  -- IPFS済み件数
-  SELECT title FROM articles ORDER BY RANDOM() LIMIT 30  -- ランダムバッチ
+  SELECT COUNT(*) FROM articles WHERE cid != ''  -- nombre d'articles déjà sur IPFS
+  SELECT title FROM articles ORDER BY RANDOM() LIMIT 30  -- lot aléatoire
   ```
 
-### Tier 1C: IPFS / Pinata（永続保存）
+### Niveau 1C : IPFS / Pinata (conservation permanente)
 
-- **CIDv1**: コンテンツアドレス（内容が変わらない限りURLも変わらない）
-- **ピンサービス**: Pinata（主）+ NFT.Storage / Filebase / Lighthouse（副）
-- **意味**: Cloudflareが消えても、IPFSネットワークに記事が残る
+- **CIDv1** : adresse de contenu (tant que le contenu ne change pas, l'URL non plus)
+- **Services d'épinglage** : Pinata (principal) + NFT.Storage / Filebase / Lighthouse (secondaires)
+- **Signification** : même si Cloudflare disparaît, les articles subsistent sur le réseau IPFS
 
-### Nakamoto係数 N の計算
+### Calcul du coefficient de Nakamoto N
 
 ```
-N = por_count（実際にIPFSで読まれた回数）+ 2（R2+Pinata確定分）
+N = por_count (nombre de lectures réelles via IPFS) + 2 (R2 + Pinata, acquis)
 ```
 
-N ≥ 3: STABLE（安定保全）
-N ≥ 7: ROBUST（堅牢）
-N ≥ 10: IMMORTAL（不滅）
+N ≥ 3 : STABLE (préservation stable)
+N ≥ 7 : ROBUST (robuste)
+N ≥ 10 : IMMORTAL (immortel)
 
 ---
 
-## 5. Von Neumann自己増殖プロトコル
+## 5. Protocole d'auto-réplication de Von Neumann
 
-### 思想的背景
+### Contexte intellectuel
 
-ジョン・フォン・ノイマンは1940年代、「自己を複製できる機械」の理論を構築した（Universal Constructor）。鍵となる洞察：
+Dans les années 1940, John von Neumann a construit la théorie des « machines capables de se reproduire » (Universal Constructor). L'idée clé :
 
-> 「自己を複製する機械は、自分自身の完全な記述（ゲノム）を持たなければならない」
+> « Une machine qui se réplique doit posséder une description complète d'elle-même (un génome). »
 
-Phoenix Meshはこれをデジタルネットワークに適用した。
+Phoenix Mesh applique ce principe à un réseau numérique.
 
-### Genome（遺伝子）の実装
+### Mise en œuvre du génome
 
 ```javascript
 const GENOME_VERSION = 'v2.0.0';
@@ -193,7 +199,7 @@ function buildReplicationManifest() {
       }
     },
     automaton_rules: {
-      // Von Neumann細胞オートマトン規則のデジタル版
+      // Version numérique des règles de l'automate cellulaire de Von Neumann
       UNPROCESSED: { action: 'fetch_and_store', priority: 1 },
       ENDANGERED:  { action: 'replicate',       priority: 2 },
       LOW:         { action: 'pin_ipfs',         priority: 3 },
@@ -205,31 +211,31 @@ function buildReplicationManifest() {
 }
 ```
 
-### /bootstrap エンドポイント（自己記述的再生）
+### Le point d'accès /bootstrap (régénération auto-descriptive)
 
-このエンドポイントにアクセスすると、**ネットワーク全体を再生成できるPythonスクリプト**が返される。
+Un accès à ce point d'accès renvoie un **script Python capable de régénérer l'ensemble du réseau**.
 
 ```bash
 curl -sL https://wikipedia-is-dead.com/bootstrap | python3
 ```
 
-スクリプトの内容：
-1. Nostr DHTにノード登録し、担当hash範囲を取得
-2. 担当範囲の未保全記事のみをクロール（帯域の無駄がない）
-3. 中央サーバーが落ちても、ピアリストから他ノードを発見して継続
-4. 依存ライブラリ：Python標準ライブラリのみ
+Contenu du script :
+1. Enregistre le nœud dans la DHT Nostr et obtient sa plage de hachage
+2. N'explore que les articles non préservés de sa plage (aucune bande passante gaspillée)
+3. Même si le serveur central tombe, découvre d'autres nœuds à partir de la liste de pairs et continue
+4. Dépendances : uniquement la bibliothèque standard de Python
 
-Von Neumannの普遍構成子と同じ原理：**このエンドポイント自体がネットワークの「遺伝子」**であり、どこからでも全体を再構築できる。
+Même principe que le constructeur universel de Von Neumann : **ce point d'accès est lui-même le « gène » du réseau**, et permet de reconstruire l'ensemble de n'importe où.
 
 ---
 
-## 6. Nostr DHT — 分散ノード発見
+## 6. Nostr DHT — découverte distribuée des nœuds
 
-### なぜNostrか
+### Pourquoi Nostr
 
-中央のノードレジストリサーバーがあれば、そこを攻撃すれば全ネットワークを麻痺できる。Nostrプロトコルを使うことで、ノード情報をリレーネットワークに分散保存する。
+S'il existait un serveur central de registre des nœuds, il suffirait de l'attaquer pour paralyser tout le réseau. Avec le protocole Nostr, les informations sur les nœuds sont stockées de manière distribuée sur le réseau de relais.
 
-### Consistent Hashing（一貫性ハッシュ）
+### Consistent Hashing (hachage cohérent)
 
 ```javascript
 function titleHashSimple(title) {
@@ -239,39 +245,39 @@ function titleHashSimple(title) {
 }
 ```
 
-各ノードは0〜255のhash範囲を割り当てられ、**自分の担当範囲の記事のみを保全**する。これにより：
+Chaque nœud se voit attribuer une plage de hachage de 0 à 255 et **ne préserve que les articles de sa propre plage**. De ce fait :
 
-- 記事が自動的にノード間で分散される
-- 1ノードが落ちても他ノードがカバー
-- ネットワーク拡大とともに負荷が自動分散
+- les articles sont automatiquement répartis entre les nœuds
+- si un nœud tombe, les autres nœuds prennent le relais
+- la charge se répartit automatiquement à mesure que le réseau s'étend
 
-### ノード登録フロー
+### Flux d'enregistrement d'un nœud
 
 ```
 POST /api/nodes/announce
   {"node_id": "abc123", "url": "https://my-node.example.com"}
     │
     ▼
-1. 既存ノード数に基づいてhash範囲を割り当て
-2. Nostr kind:30078イベントとして公開
-3. ピアリスト（他のアクティブノード）を返す
-4. ハートビート失敗ノードは自動削除
+1. Attribue une plage de hachage selon le nombre de nœuds existants
+2. Publie un événement Nostr kind:30078
+3. Renvoie la liste de pairs (les autres nœuds actifs)
+4. Les nœuds dont le heartbeat échoue sont supprimés automatiquement
 ```
 
 ---
 
-## 7. 知識グラフ・カスケード
+## 7. Cascade du graphe de connaissances
 
-### 概念
+### Concept
 
-Wikipediaの記事はハイパーリンクで相互接続されている。「東京」の記事を保全すれば、そこにリンクされた「渋谷」「新宿」「皇居」も自動的に次の保全対象となる。これが**知識グラフ・カスケード**だ。
+Les articles de Wikipédia sont reliés entre eux par des hyperliens. Si l'on préserve l'article « Tokyo », les articles « Shibuya », « Shinjuku » et « Palais impérial » qui y sont liés deviennent automatiquement les cibles de préservation suivantes. C'est la **cascade du graphe de connaissances**.
 
-### BFSキュー実装
+### Mise en œuvre de la file BFS
 
 ```javascript
-// R2に__graph-queue.jsonとして保存されるBFSキュー
+// File BFS enregistrée dans R2 sous le nom __graph-queue.json
 async function pushToGraphQueue(env, titles) {
-  const queue = await popFromGraphQueue(env, 0); // 現在のキューを取得
+  const queue = await popFromGraphQueue(env, 0); // récupère la file actuelle
   const merged = [...new Set([...queue, ...titles])].slice(0, 5000);
   await env.HTML_BUCKET.put('__graph-queue.json', JSON.stringify(merged));
 }
@@ -283,127 +289,127 @@ async function popFromGraphQueue(env, n) {
 }
 ```
 
-### processBatch()の動作
+### Fonctionnement de processBatch()
 
 ```
-processBatch()（cronから毎分呼ばれる）
+processBatch() (appelé chaque minute par le cron)
     │
-    ├── 1. グラフキューに記事あり？
-    │       YES → そのタイトルをクロール対象に
-    │       NO  → Wikipedia allpages APIからランダム取得
+    ├── 1. Y a-t-il des articles dans la file du graphe ?
+    │       OUI → ces titres deviennent les cibles d'exploration
+    │       NON → sélection aléatoire via l'API allpages de Wikipédia
     │
-    ├── 2. 各記事のHTML取得（並列）
+    ├── 2. Récupération du HTML de chaque article (en parallèle)
     │
-    ├── 3. R2に保存 + D1にINSERT
+    ├── 3. Enregistrement dans R2 + INSERT dans D1
     │
-    └── 4. 記事内のリンクを抽出 → グラフキューに追加（await）
+    └── 4. Extraction des liens de l'article → ajout à la file du graphe (await)
               └── extractWikiLinks()
-                    絶対URL対応: href="https://ja.wikipedia.org/wiki/TITLE"
+                    Prise en charge des URL absolues : href="https://ja.wikipedia.org/wiki/TITLE"
 ```
 
 ---
 
-## 8. Nakamoto係数ダッシュボード
+## 8. Tableau de bord du coefficient de Nakamoto
 
-### 概念
+### Concept
 
-Nakamoto係数とはブロックチェーン分野の指標で「ネットワークを支配するのに必要な最小ノード数」を表す。値が高いほど分散化・堅牢性が高い。
+Le coefficient de Nakamoto est un indicateur issu du domaine de la blockchain : il exprime « le nombre minimal de nœuds nécessaires pour dominer le réseau ». Plus la valeur est élevée, plus la décentralisation et la robustesse sont grandes.
 
-Phoenix MeshではこれをIPFS普及度の指標として転用した。
+Phoenix Mesh le détourne pour mesurer la diffusion sur IPFS.
 
-### 記事ごとの状態分類
+### Classification de l'état de chaque article
 
 ```javascript
 function getArticleState(cid, porCount) {
-  if (!cid)          return 'UNPROCESSED'; // まだIPFSにない
-  if (porCount <= 0) return 'ENDANGERED';  // IPFSにあるが読者ゼロ
-  if (porCount <= 2) return 'LOW';         // 読者少ない
-  if (porCount <= 6) return 'STABLE';      // 安定
-  if (porCount <= 9) return 'ROBUST';      // 堅牢
-  return 'IMMORTAL';                       // 不滅
+  if (!cid)          return 'UNPROCESSED'; // pas encore sur IPFS
+  if (porCount <= 0) return 'ENDANGERED';  // sur IPFS mais sans aucun lecteur
+  if (porCount <= 2) return 'LOW';         // peu de lecteurs
+  if (porCount <= 6) return 'STABLE';      // stable
+  if (porCount <= 9) return 'ROBUST';      // robuste
+  return 'IMMORTAL';                       // immortel
 }
 ```
 
-### 記事ページのバッジ表示
+### Affichage du badge sur la page d'un article
 
-各記事ページの右下に7セグメントバーで表示：
+En bas à droite de chaque page d'article, une barre à 7 segments :
 
 ```
-N = por_count + 2（R2+Pinata確定分）
+N = por_count + 2 (R2 + Pinata, acquis)
 
-[██████░] N=6 STABLE   ← 緑
-[███░░░░] N=3 LOW      ← 黄
-[█░░░░░░] N=1 ENDANGERED ← 赤
+[██████░] N=6 STABLE   ← vert
+[███░░░░] N=3 LOW      ← jaune
+[█░░░░░░] N=1 ENDANGERED ← rouge
 ```
 
 ### Proof-of-Read
 
-読者が記事を読むと自動的に `por_count` がインクリメントされる。これは「この記事は実際に読まれている＝価値がある＝保全優先度が高い」という証明になる。
+Quand un lecteur lit un article, `por_count` est automatiquement incrémenté. Cela constitue une preuve que « cet article est réellement lu = il a de la valeur = sa priorité de préservation est élevée ».
 
 ---
 
-## 9. Enterprise HTMLダンプ大量インポート
+## 9. Import massif du dump HTML Enterprise
 
-### 背景と動機
+### Contexte et motivation
 
-通常のcronバッチ（毎分30件）では140万記事を全て取得するのに**約32日**かかる計算だった。
+Avec le lot cron ordinaire (30 articles par minute), la récupération de 1,4 million d'articles aurait pris **environ 32 jours**.
 
-Wikimediaが提供する**Enterprise HTML Dump**（Parsoidレンダリング済みHTML）を使えば、APIを叩かずに全記事を一括取得できる。
+Avec le **dump HTML Enterprise** fourni par Wikimedia (HTML déjà rendu par Parsoid), on peut récupérer tous les articles d'un seul coup, sans appeler l'API.
 
-### ダンプの仕様
+### Spécification du dump
 
 ```
-URL: https://dumps.wikimedia.org/other/enterprise_html/runs/20250320/
-     jawiki-NS0-20250320-ENTERPRISE-HTML.json.tar.gz
+URL : https://dumps.wikimedia.org/other/enterprise_html/runs/20250320/
+      jawiki-NS0-20250320-ENTERPRISE-HTML.json.tar.gz
 
-形式: tar.gz内にNDJSON（1行1記事）
-構造: {"name": "東京", "article_body": {"html": "<html>..."}}
-ファイル構成: jawiki_namespace_0_0.ndjson 〜 jawiki_namespace_0_71.ndjson（72ファイル）
-各ファイル: 約2GB（展開後）
-総展開サイズ: 約147GB
-圧縮サイズ: 27.4GB
+Format : NDJSON dans une archive tar.gz (un article par ligne)
+Structure : {"name": "東京", "article_body": {"html": "<html>..."}}
+Composition des fichiers : jawiki_namespace_0_0.ndjson à jawiki_namespace_0_71.ndjson (72 fichiers)
+Chaque fichier : environ 2 Go (après décompression)
+Taille totale décompressée : environ 147 Go
+Taille compressée : 27,4 Go
 ```
 
-### dump_import.py v2 の設計
+### Conception de dump_import.py v2
 
 ```python
 DUMP_URL   = "https://dumps.wikimedia.org/.../jawiki-NS0-20250320-ENTERPRISE-HTML.json.tar.gz"
 SUBMIT_URL = "https://wikipedia-is-dead.com/api/contribute/submit"
-EXISTING   = "/tmp/existing_titles.txt"       # 重複除外リスト
-DONE_FILE  = "/tmp/phoenix_done_this_run.txt" # 今回アップ済み（再接続用）
-WORKERS    = 50                               # 並列スレッド数
-MAX_RECONN = 10                               # 最大再接続回数
+EXISTING   = "/tmp/existing_titles.txt"       # liste d'exclusion des doublons
+DONE_FILE  = "/tmp/phoenix_done_this_run.txt" # éléments déjà envoyés lors de cette exécution (pour la reconnexion)
+WORKERS    = 50                               # nombre de threads parallèles
+MAX_RECONN = 10                               # nombre maximal de reconnexions
 ```
 
-**核心的工夫**：`tarfile.open(fileobj=resp, mode="r|gz")`
+**L'astuce centrale** : `tarfile.open(fileobj=resp, mode="r|gz")`
 
-HTTPレスポンスを直接tarfileに渡すことで、27GBを一切ディスクに書かずにストリーム処理できる。メモリ使用量は常に~100MB以下。
+En passant directement la réponse HTTP à tarfile, on traite les 27 Go en flux sans rien écrire sur le disque. L'utilisation de la mémoire reste toujours inférieure à environ 100 Mo.
 
-### 再接続設計
+### Conception de la reconnexion
 
-ネットワーク切断時の自動復旧フロー：
+Flux de récupération automatique en cas de coupure réseau :
 
 ```
-tarfile.ReadError（切断） → キューのworkerは継続稼働
-                          → 60〜180秒待機
-                          → DONE_FILEをスキップセットに追加
-                          → ダンプを先頭から再ダウンロード
-                          → 既処理済みをスキップして続きから再開
+tarfile.ReadError (coupure) → les workers de la file continuent de tourner
+                            → attente de 60 à 180 secondes
+                            → ajout de DONE_FILE à l'ensemble des éléments à ignorer
+                            → nouveau téléchargement du dump depuis le début
+                            → ignore ce qui est déjà traité et reprend à la suite
 ```
 
-### /api/contribute/submit-batch（高速化エンドポイント）
+### /api/contribute/submit-batch (point d'accès d'accélération)
 
-インポート中にWorkerの並列性能を最大化するために追加した専用エンドポイント：
+Point d'accès dédié, ajouté pour maximiser les performances parallèles du Worker pendant l'import :
 
 ```javascript
-// 最大25件を1リクエストで処理
+// Traite jusqu'à 25 éléments en une seule requête
 if (pathname === "/api/contribute/submit-batch" && request.method === "POST") {
   const valid = body.articles.slice(0, 25);
   
-  // R2への並列アップロード
+  // Envoi parallèle vers R2
   await Promise.all(valid.map(a => env.HTML_BUCKET.put(a.title, a.html, {...})));
   
-  // D1へのバッチINSERT（競合を大幅削減）
+  // INSERT par lots dans D1 (réduit fortement les conflits)
   const stmts = valid.map(a => env.DB.prepare("INSERT INTO articles...").bind(a.title));
   await env.DB.batch(stmts);
   
@@ -413,88 +419,88 @@ if (pathname === "/api/contribute/submit-batch" && request.method === "POST") {
 
 ---
 
-## 10. 完走記録と統計
+## 10. Journal d'exécution et statistiques
 
-### 最終結果（2026-10-10）
+### Résultat final (2026-10-10)
 
-| 項目 | 数値 |
+| Élément | Valeur |
 |---|---|
-| 今回アップロード（v2） | **1,224,216件** |
-| 既存アップロード（v1+事前） | 259,133件 |
-| **システム総記事数** | **約1,483,349件** |
-| 処理ファイル数 | 72ファイル |
-| 所要時間 | **16時間21分** |
-| 平均速度 | 21件/秒 |
-| 最高速度 | 54件/秒 |
-| 自動再接続回数 | 4回（上限10回） |
-| 失敗件数 | **16件（0.001%）** |
+| Envoyés cette fois (v2) | **1 224 216** |
+| Envoyés auparavant (v1 + préalable) | 259 133 |
+| **Nombre total d'articles du système** | **environ 1 483 349** |
+| Fichiers traités | 72 fichiers |
+| Durée | **16 h 21 min** |
+| Débit moyen | 21 articles/s |
+| Débit maximal | 54 articles/s |
+| Reconnexions automatiques | 4 (limite de 10) |
+| Échecs | **16 (0,001 %)** |
 
-### 速度推移の記録
+### Évolution du débit
 
-インポート開始直後はCloudflare WorkersのコールドスタートのためHTTP接続ごとに遅かったが、Workersが自動スケールするにつれ急激に加速した：
+Juste après le début de l'import, chaque connexion HTTP était lente à cause du démarrage à froid de Cloudflare Workers, puis le débit a fortement augmenté à mesure que les Workers se mettaient à l'échelle automatiquement :
 
 ```
-開始時  :  2件/s（217時間予測）
-10分後  : 22件/s（16時間予測）
-20分後  : 37件/s（  9時間予測）
-30分後  : 50件/s（  6時間予測）※1回目切断
-再接続後: 36件/s → 54件/s（最高速）
+Au début       :  2 art./s (217 heures prévues)
+Après 10 min   : 22 art./s (16 heures prévues)
+Après 20 min   : 37 art./s (9 heures prévues)
+Après 30 min   : 50 art./s (6 heures prévues) ※ 1re coupure
+Après reconnexion : 36 art./s → 54 art./s (maximum)
 ```
 
-### 比較
+### Comparaison
 
-| 方法 | 推定所要時間 |
+| Méthode | Durée estimée |
 |---|---|
-| cronバッチのみ（毎分30件） | 約32日 |
-| dump_import v1（切断失敗） | 未完走 |
-| **dump_import v2（今回）** | **16.21時間** |
-| 理論最速（バッチv3使用時） | 推定5〜8時間 |
+| Lot cron seul (30 articles par minute) | environ 32 jours |
+| dump_import v1 (échec sur coupure) | non terminé |
+| **dump_import v2 (cette fois)** | **16,21 heures** |
+| Optimum théorique (avec le lot v3) | estimé entre 5 et 8 heures |
 
 ---
 
-## 11. 今後の展望
+## 11. Perspectives
 
-### 短期（〜1ヶ月）
+### Court terme (jusqu'à 1 mois)
 
-- **差分更新**: 毎月Wikimediaが新しいダンプを公開する。今回のDONE_FILEを活用し、新規記事のみを追加インポート
-- **IPFS完全化**: 現在CIDがない記事（selfHeal + replicationHealで自動処理中）
-- **dump_import v3（バッチ版）**: `dump_import_batch.py` で次回は5〜8時間での完走を目指す
+- **Mise à jour différentielle** : Wikimedia publie chaque mois un nouveau dump. En s'appuyant sur le DONE_FILE de cette fois, n'importer que les nouveaux articles
+- **IPFS complet** : articles actuellement sans CID (traitement automatique en cours par selfHeal + replicationHeal)
+- **dump_import v3 (version par lots)** : viser, avec `dump_import_batch.py`, une exécution complète en 5 à 8 heures la prochaine fois
 
-### 中期（〜6ヶ月）
+### Moyen terme (jusqu'à 6 mois)
 
-- **多言語対応**: 英語版（en-wiki）、中国語版（zh-wiki）等の追加
-- **P2Pノード拡大**: bootstrapスクリプトを公開し、分散ノードを世界中に展開
-- **Nostr DHT本格稼働**: ノード間の記事分担を実際のトラフィックで最適化
+- **Prise en charge multilingue** : ajout de la version anglaise (en-wiki), chinoise (zh-wiki), etc.
+- **Extension des nœuds P2P** : publier le script bootstrap et déployer des nœuds distribués dans le monde entier
+- **Mise en service complète de la DHT Nostr** : optimiser la répartition des articles entre nœuds avec le trafic réel
 
-### 長期ビジョン
+### Vision à long terme
 
-Phoenix Meshの最終形は「**どの単一主体も停止できないWikipedia**」だ。
+La forme finale de Phoenix Mesh est « **un Wikipédia qu'aucune entité unique ne peut arrêter** ».
 
-- Cloudflareが止めても: IPFSゲートウェイ経由でアクセス可能
-- 日本政府が遮断しても: Torやフリーネットワーク経由、または海外ノードから
-- Wikimediaが閉鎖しても: 既にミラーリング完了、差分更新は他ソースから
-- 全ての中央サーバーが消えても: Nostrに登録されたP2Pノード群が生き続ける
+- Même si Cloudflare s'arrête : accessible via les passerelles IPFS
+- Même si le gouvernement japonais bloque : via Tor ou des réseaux libres, ou depuis des nœuds à l'étranger
+- Même si Wikimedia ferme : le miroir est déjà terminé, les mises à jour différentielles viendront d'autres sources
+- Même si tous les serveurs centraux disparaissent : les nœuds P2P enregistrés sur Nostr continuent de vivre
 
 ---
 
-## 付録: 主要ファイル構成
+## Annexe : organisation des fichiers principaux
 
 ```
 /Users/tohr/wikipedia/
 ├── src/
-│   └── index.js          # Cloudflare Worker本体（~5500行）
+│   └── index.js          # Corps du Cloudflare Worker (~5500 lignes)
 ├── scripts/
-│   ├── dump_import.py    # ダンプインポーター v2（本番使用）
-│   └── dump_import_batch.py  # バッチ版 v3（次回用）
-├── wrangler.jsonc        # Cloudflare設定
-└── PHOENIX_MESH_OVERVIEW.md  # 本ドキュメント
+│   ├── dump_import.py    # Importeur de dump v2 (utilisé en production)
+│   └── dump_import_batch.py  # Version par lots v3 (pour la prochaine fois)
+├── wrangler.jsonc        # Configuration Cloudflare
+└── PHOENIX_MESH_OVERVIEW.md  # Le présent document
 
 /tmp/
-├── existing_titles.txt       # 重複除外リスト（259,133件）
-└── phoenix_done_this_run.txt # 今回完了リスト（1,224,216件）
+├── existing_titles.txt       # Liste d'exclusion des doublons (259 133 éléments)
+└── phoenix_done_this_run.txt # Liste des éléments terminés cette fois (1 224 216 éléments)
 ```
 
-## 付録: 重要なAPI仕様
+## Annexe : spécifications importantes des API
 
 ### POST /api/contribute/submit
 ```json
@@ -504,23 +510,23 @@ Phoenix Meshの最終形は「**どの単一主体も停止できないWikipedia
 
 ### POST /api/contribute/submit-batch
 ```json
-{"articles": [{"title": "東京", "html": "..."}, ...]}  // 最大25件
+{"articles": [{"title": "東京", "html": "..."}, ...]}  // 25 éléments au maximum
 → {"ok": true, "processed": 25}
 ```
 
 ### GET /api/contribute/next?node_id=abc123
 ```json
-{"title": "次に保全すべき記事タイトル"}
-// node_idがあればConsistent Hashingで担当範囲をフィルタ
+{"title": "titre du prochain article à préserver"}
+// avec node_id, filtre selon la plage de responsabilité par hachage cohérent
 ```
 
 ### POST /api/contribute/proof
 ```json
 {"titles": ["東京", "大阪", ...]}
 → {"ok": true, "updated": 2}
-// por_countをインクリメント → Nakamoto係数が上昇
+// incrémente por_count → le coefficient de Nakamoto augmente
 ```
 
 ---
 
-*最終更新: 2026-10-10 — 日本語版Wikipedia全記事ミラーリング完走の日*
+*Dernière mise à jour : 2026-10-10 — jour où le miroir de tous les articles de Wikipédia en japonais a été achevé*
